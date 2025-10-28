@@ -17,6 +17,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
   const [endpoint, setEndpoint] = useState('');
   const [maxAgents, setMaxAgents] = useState(10);
   const [sourceFiles, setSourceFiles] = useState<SourceFile[]>([]);
+  const [tools, setTools] = useState('');
   const [isSuggestingName, setIsSuggestingName] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
 
@@ -28,6 +29,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
       setEndpoint(initialData.endpoint);
       setMaxAgents(initialData.maxAgents);
       setSourceFiles(initialData.sourceFiles || []);
+      setTools(initialData.tools?.join(', ') || '');
       setIsPublic(initialData.isPublic || false);
     } else {
       // Reset form for creation
@@ -37,6 +39,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
       setEndpoint('');
       setMaxAgents(10);
       setSourceFiles([]);
+      setTools('');
       setIsPublic(false);
     }
   }, [initialData]);
@@ -47,6 +50,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
       alert("Server name, endpoint, and command cannot be empty.");
       return;
     }
+    const toolsArray = tools.split(',').map(t => t.trim()).filter(t => t);
     onSave({ 
         name, 
         command, 
@@ -54,7 +58,8 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
         endpoint, 
         maxAgents, 
         sourceFiles,
-        isPublic
+        isPublic,
+        tools: toolsArray,
     });
   };
 
@@ -147,6 +152,18 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                 className="w-full bg-gray-50 text-gray-900 rounded-md px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
                 placeholder="e.g., 127.0.0.1:8000 or api.domain.com"
                 required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="tools" className="block text-sm font-medium text-gray-600 mb-1">Tools (comma-separated, optional)</label>
+            <input
+                id="tools"
+                type="text"
+                value={tools}
+                onChange={(e) => setTools(e.target.value)}
+                className="w-full bg-gray-50 text-gray-900 rounded-md px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                placeholder="e.g., web-scraper, data-analyzer"
             />
           </div>
           

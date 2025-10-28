@@ -28,4 +28,5 @@ export interface ServerConfig {
   createdBy: string;
   lastModified: string;
   isPublic: boolean;
+  tools?: string[];
 }

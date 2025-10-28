@@ -35,18 +35,23 @@ const formatDistanceToNow = (isoDate: string) => {
 };
 
 export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, onEdit, onDelete, onToggleVisibility }) => {
-  const { name, status, command, agentsRunning, maxAgents, endpoint, transport, createdBy, lastModified, isPublic } = server;
+  const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools } = server;
   const style = statusStyles[status];
   const isTransitioning = status === ServerStatus.STARTING || status === ServerStatus.STOPPING;
-  const [copied, setCopied] = useState(false);
+  const [commandCopied, setCommandCopied] = useState(false);
+  const [endpointCopied, setEndpointCopied] = useState(false);
 
   const handleCopyCommand = () => {
     navigator.clipboard.writeText(command);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCommandCopied(true);
+    setTimeout(() => setCommandCopied(false), 2000);
   };
-
-  const agentLoadPercentage = maxAgents > 0 ? (agentsRunning / maxAgents) * 100 : 0;
+  
+  const handleCopyEndpoint = () => {
+    navigator.clipboard.writeText(endpoint);
+    setEndpointCopied(true);
+    setTimeout(() => setEndpointCopied(false), 2000);
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-md flex flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
@@ -64,16 +69,29 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, 
               <Icon name={isPublic ? 'globe-alt' : 'lock-closed'} className="w-3 h-3" />
               <span>{isPublic ? 'Public' : 'Private'}</span>
           </div>
-          <div className="flex items-center space-x-1 min-w-0">
-            <Icon name="link" className="w-4 h-4 flex-shrink-0" />
-            <span className="truncate">{endpoint}</span>
-          </div>
           <span className="flex-shrink-0 uppercase text-xs font-semibold bg-green-100 text-green-800 px-2 py-1 rounded-full">{transport}</span>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="p-5 flex-grow space-y-4">
+        {/* Endpoint Section */}
+        <div>
+          <label className="text-xs font-semibold text-gray-500 uppercase">Endpoint</label>
+          <div className="mt-1 group relative bg-gray-50 p-2 rounded-md flex items-center justify-between">
+            <code className="text-blue-700 text-sm break-words overflow-x-auto pr-8">
+              {endpoint}
+            </code>
+            <button
+              onClick={handleCopyEndpoint}
+              className="absolute top-2 right-2 p-1.5 rounded-md text-gray-400 bg-gray-50 group-hover:bg-gray-100 group-hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Copy Endpoint"
+            >
+              {endpointCopied ? <Icon name="check" className="w-4 h-4 text-green-500" /> : <Icon name="copy" className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+      
         {/* Command Section */}
         <div>
           <label className="text-xs font-semibold text-gray-500 uppercase">Command</label>
@@ -86,24 +104,16 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, 
               className="absolute top-2 right-2 p-1.5 rounded-md text-gray-400 bg-gray-50 group-hover:bg-gray-100 group-hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
               aria-label="Copy Command"
             >
-              {copied ? <Icon name="check" className="w-4 h-4 text-green-500" /> : <Icon name="copy" className="w-4 h-4" />}
+              {commandCopied ? <Icon name="check" className="w-4 h-4 text-green-500" /> : <Icon name="copy" className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
-        {/* Stats Section */}
-        <div className="space-y-3">
-          <div>
-            <div className="flex justify-between items-center mb-1 text-sm text-gray-700">
-              <span className="flex items-center"><Icon name="users" className="w-4 h-4 mr-2 text-gray-400" />Active Agents</span>
-              <span>{agentsRunning} / {maxAgents}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-green-500 h-2 rounded-full"
-                style={{ width: `${agentLoadPercentage}%` }}
-              ></div>
-            </div>
+        {/* Tools and Stats Section */}
+        <div className="space-y-3 pt-2">
+          <div className="flex justify-between items-center text-sm text-gray-700">
+            <span className="flex items-center"><Icon name="cpu-chip" className="w-4 h-4 mr-2 text-gray-400" />Available Tools</span>
+            <span className="font-semibold">{status === ServerStatus.ONLINE ? (tools?.length ?? 0) : '—'}</span>
           </div>
         </div>
       </div>
