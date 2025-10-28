@@ -8,6 +8,7 @@ interface ServerCardProps {
   onEdit: () => void;
   onDelete: () => void;
   onToggleVisibility: () => void;
+  onViewDetails: () => void;
 }
 
 const statusStyles: { [key in ServerStatus]: { dot: string; text: string; label: string } } = {
@@ -34,27 +35,32 @@ const formatDistanceToNow = (isoDate: string) => {
   return "just now";
 };
 
-export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, onEdit, onDelete, onToggleVisibility }) => {
+export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, onEdit, onDelete, onToggleVisibility, onViewDetails }) => {
   const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools } = server;
   const style = statusStyles[status];
   const isTransitioning = status === ServerStatus.STARTING || status === ServerStatus.STOPPING;
   const [commandCopied, setCommandCopied] = useState(false);
   const [endpointCopied, setEndpointCopied] = useState(false);
 
-  const handleCopyCommand = () => {
+  const handleCopyCommand = (e: React.MouseEvent) => {
+    e.stopPropagation();
     navigator.clipboard.writeText(command);
     setCommandCopied(true);
     setTimeout(() => setCommandCopied(false), 2000);
   };
   
-  const handleCopyEndpoint = () => {
+  const handleCopyEndpoint = (e: React.MouseEvent) => {
+    e.stopPropagation();
     navigator.clipboard.writeText(endpoint);
     setEndpointCopied(true);
     setTimeout(() => setEndpointCopied(false), 2000);
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md flex flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl">
+    <div 
+      className="bg-white rounded-lg shadow-md flex flex-col transition-transform duration-300 hover:scale-105 hover:shadow-xl cursor-pointer"
+      onClick={onViewDetails}
+    >
       {/* Card Header */}
       <div className="p-5 border-b border-gray-200">
         <div className="flex justify-between items-start">
@@ -119,7 +125,7 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, 
       </div>
 
       {/* Card Footer */}
-      <div className="bg-gray-50 p-3 flex justify-between items-center border-t border-gray-200">
+      <div className="bg-gray-50 p-3 flex justify-between items-center border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
         <div className="text-xs text-gray-500">
           <div className="flex items-center">
             <Icon name="user" className="w-3 h-3 mr-1.5" />

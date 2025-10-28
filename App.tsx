@@ -5,30 +5,40 @@ import { Modal } from './components/Modal';
 import { ServerForm } from './components/ServerForm';
 import { Pagination } from './components/Pagination';
 import { StatusFilter } from './components/StatusFilter';
-import { ServerConfig, ServerStatus, TransportType } from './types';
+import { ServerConfig, ServerStatus, TransportType, Tool } from './types';
 import { Icon } from './components/Icon';
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
+import { ServerDetailModal } from './components/ServerDetailModal';
 
 const initialServers: ServerConfig[] = [
-  { id: '1', name: 'Project Chimera', command: 'mcp-agent --run research --max-agents 10', status: ServerStatus.ONLINE, transport: TransportType.SSE, endpoint: '192.168.1.101:8080', agentsRunning: 8, maxAgents: 10, createdBy: 'admin@mcp.com', lastModified: '2023-10-27T10:00:00Z', isPublic: true, tools: ['web-scraper', 'data-analyzer', 'report-generator'] },
+  { id: '1', name: 'Project Chimera', command: 'mcp-agent --run research --max-agents 10', status: ServerStatus.ONLINE, transport: TransportType.SSE, endpoint: '192.168.1.101:8080', agentsRunning: 8, maxAgents: 10, createdBy: 'admin@mcp.com', lastModified: '2023-10-27T10:00:00Z', isPublic: true, tools: [
+      { name: 'web-scraper', description: 'Scrapes content from a given URL.', args: [{ name: 'url', type: 'string', description: 'The URL to scrape.' }] },
+      { name: 'data-analyzer', description: 'Analyzes a given dataset.', args: [{ name: 'dataset_id', type: 'string', description: 'ID of the dataset to analyze.' }, { name: 'method', type: 'string', description: 'Analysis method (e.g., "correlation").' }] },
+  ]},
   { id: '2', name: 'Odyssey Bot Fleet', command: 'mcp-agent-support --port 9000 --limit 50', status: ServerStatus.OFFLINE, transport: TransportType.STREAMABLE_HTTP, endpoint: 'api.odyssey.com/v1', agentsRunning: 0, maxAgents: 50, createdBy: 'dev@odyssey.ai', lastModified: '2023-10-26T14:30:00Z', isPublic: false },
   { id: '3', name: 'Code Weaver', command: 'node /srv/codeweaver/index.js --mode gpt4', status: ServerStatus.STARTING, transport: TransportType.SSE, endpoint: '10.0.0.5:3000', agentsRunning: 0, maxAgents: 25, sourceFiles: [{ path: 'index.js', content: 'console.log("Hello, MCP!");' }], createdBy: 'sre@internal.net', lastModified: '2023-10-27T11:20:00Z', isPublic: false },
-  { id: '4', name: 'DataCrunch Alpha', command: 'python main.py --dataset=large', status: ServerStatus.ONLINE, transport: TransportType.STREAMABLE_HTTP, endpoint: 'jobs.datacrunch.io', agentsRunning: 18, maxAgents: 20, createdBy: 'data-team@crunch.co', lastModified: '2023-10-25T09:00:00Z', isPublic: true, tools: ['bigquery-connector', 'spark-engine'] },
+  { id: '4', name: 'DataCrunch Alpha', command: 'python main.py --dataset=large', status: ServerStatus.ONLINE, transport: TransportType.STREAMABLE_HTTP, endpoint: 'jobs.datacrunch.io', agentsRunning: 18, maxAgents: 20, createdBy: 'data-team@crunch.co', lastModified: '2023-10-25T09:00:00Z', isPublic: true, tools: [
+    { name: 'bigquery-connector', description: 'Connects to a BigQuery instance and runs a query.', args: [{ name: 'query', type: 'string', description: 'The SQL query to execute.' }] },
+  ]},
   { id: '5', name: 'Automaton Prime', command: './automaton --config prod.yml', status: ServerStatus.OFFLINE, transport: TransportType.SSE, endpoint: '172.16.0.10:9999', agentsRunning: 0, maxAgents: 100, createdBy: 'admin@mcp.com', lastModified: '2023-10-24T18:45:00Z', isPublic: false },
   { id: '6', name: 'Research Hub Gamma', command: 'mcp-agent --run research --gpu-enabled', status: ServerStatus.OFFLINE, transport: TransportType.STREAMABLE_HTTP, endpoint: '192.168.1.102:8080', agentsRunning: 0, maxAgents: 15, createdBy: 'research@mcp.com', lastModified: '2023-10-27T12:00:00Z', isPublic: false },
-  { id: '7', name: 'Support Sphere', command: 'mcp-agent-support --port 9001', status: ServerStatus.ONLINE, transport: TransportType.SSE, endpoint: 'api.odyssey.com/v2', agentsRunning: 45, maxAgents: 50, createdBy: 'dev@odyssey.ai', lastModified: '2023-10-27T08:15:00Z', isPublic: false, tools: ['zendesk-api', 'sentiment-analysis', 'live-chat-bridge', 'faq-lookup'] },
+  { id: '7', name: 'Support Sphere', command: 'mcp-agent-support --port 9001', status: ServerStatus.ONLINE, transport: TransportType.SSE, endpoint: 'api.odyssey.com/v2', agentsRunning: 45, maxAgents: 50, createdBy: 'dev@odyssey.ai', lastModified: '2023-10-27T08:15:00Z', isPublic: false, tools: [
+    { name: 'zendesk-api', description: 'Interacts with the Zendesk API to manage tickets.', args: [{ name: 'ticket_id', type: 'integer', description: 'The ID of the ticket.' }, { name: 'action', type: 'string', description: 'Action to perform (e.g., "close", "update").' }] },
+    { name: 'sentiment-analysis', description: 'Performs sentiment analysis on a text.', args: [{ name: 'text', type: 'string', description: 'The text to analyze.' }] },
+  ]},
 ];
 
 const ITEMS_PER_PAGE = 6;
 
 type StatusFilterType = 'All' | ServerStatus;
-type ModalContent = 'form' | 'delete' | null;
+type ModalContent = 'form' | 'delete' | 'detail' | null;
 
 const App: React.FC = () => {
   const [servers, setServers] = useState<ServerConfig[]>(initialServers);
   const [modalContent, setModalContent] = useState<ModalContent>(null);
   const [editingServer, setEditingServer] = useState<ServerConfig | null>(null);
   const [serverToDelete, setServerToDelete] = useState<ServerConfig | null>(null);
+  const [viewingServer, setViewingServer] = useState<ServerConfig | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<StatusFilterType>('All');
@@ -42,11 +52,17 @@ const App: React.FC = () => {
     setEditingServer(server);
     setModalContent('form');
   }, []);
+  
+  const handleViewServerDetails = useCallback((server: ServerConfig) => {
+    setViewingServer(server);
+    setModalContent('detail');
+  }, []);
 
   const handleCloseModal = useCallback(() => {
     setModalContent(null);
     setEditingServer(null);
     setServerToDelete(null);
+    setViewingServer(null);
   }, []);
 
   const handleSaveServer = useCallback((serverData: Omit<ServerConfig, 'id' | 'status' | 'agentsRunning' | 'createdBy' | 'lastModified'>) => {
@@ -200,6 +216,7 @@ const App: React.FC = () => {
                     onEdit={() => handleOpenEditModal(server)}
                     onDelete={() => handleInitiateDelete(server)}
                     onToggleVisibility={() => toggleServerVisibility(server.id)}
+                    onViewDetails={() => handleViewServerDetails(server)}
                   />
                 ))}
               </div>
@@ -231,6 +248,12 @@ const App: React.FC = () => {
             server={serverToDelete}
             onConfirm={handleConfirmDelete}
             onCancel={handleCloseModal}
+          />
+        )}
+        {modalContent === 'detail' && viewingServer && (
+          <ServerDetailModal
+            server={viewingServer}
+            onClose={handleCloseModal}
           />
         )}
       </Modal>

@@ -15,6 +15,18 @@ export interface SourceFile {
   content: string;
 }
 
+export interface ToolArg {
+  name: string;
+  type: string;
+  description: string;
+}
+
+export interface Tool {
+  name: string;
+  description: string;
+  args: ToolArg[];
+}
+
 export interface ServerConfig {
   id: string;
   name: string;
@@ -28,5 +40,5 @@ export interface ServerConfig {
   createdBy: string;
   lastModified: string;
   isPublic: boolean;
-  tools?: string[];
+  tools?: Tool[];
 }

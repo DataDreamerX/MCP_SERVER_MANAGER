@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ServerConfig, TransportType, SourceFile } from '../types';
+import { ServerConfig, TransportType, SourceFile, Tool } from '../types';
 import { TRANSPORT_TYPES } from '../constants';
 import { suggestServerName } from '../services/geminiService';
 import { Icon } from './Icon';
@@ -29,7 +29,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
       setEndpoint(initialData.endpoint);
       setMaxAgents(initialData.maxAgents);
       setSourceFiles(initialData.sourceFiles || []);
-      setTools(initialData.tools?.join(', ') || '');
+      setTools(initialData.tools ? JSON.stringify(initialData.tools, null, 2) : '');
       setIsPublic(initialData.isPublic || false);
     } else {
       // Reset form for creation
@@ -50,7 +50,17 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
       alert("Server name, endpoint, and command cannot be empty.");
       return;
     }
-    const toolsArray = tools.split(',').map(t => t.trim()).filter(t => t);
+    
+    let toolsArray: Tool[] = [];
+    if (tools.trim()) {
+      try {
+        toolsArray = JSON.parse(tools);
+      } catch (error) {
+        alert("The tools field contains invalid JSON. Please correct it or leave it empty.");
+        return;
+      }
+    }
+
     onSave({ 
         name, 
         command, 
@@ -156,14 +166,22 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
           </div>
 
           <div>
-            <label htmlFor="tools" className="block text-sm font-medium text-gray-600 mb-1">Tools (comma-separated, optional)</label>
-            <input
+            <label htmlFor="tools" className="block text-sm font-medium text-gray-600 mb-1">Tools (JSON format, optional)</label>
+            <textarea
                 id="tools"
-                type="text"
                 value={tools}
                 onChange={(e) => setTools(e.target.value)}
-                className="w-full bg-gray-50 text-gray-900 rounded-md px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                placeholder="e.g., web-scraper, data-analyzer"
+                className="w-full bg-gray-50 text-gray-900 rounded-md px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition font-mono text-sm"
+                placeholder={`[
+  {
+    "name": "tool-name",
+    "description": "Tool description.",
+    "args": [
+      { "name": "arg1", "type": "string", "description": "Arg description." }
+    ]
+  }
+]`}
+                rows={6}
             />
           </div>
           
