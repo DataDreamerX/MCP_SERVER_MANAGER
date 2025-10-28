@@ -5,7 +5,6 @@ import { Icon } from './Icon';
 interface ServerCardProps {
   server: ServerConfig;
   onToggleStatus: () => void;
-  onEdit: () => void;
   onDelete: () => void;
   onToggleVisibility: () => void;
   onViewDetails: () => void;
@@ -35,7 +34,7 @@ const formatDistanceToNow = (isoDate: string) => {
   return "just now";
 };
 
-export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, onEdit, onDelete, onToggleVisibility, onViewDetails }) => {
+export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, onDelete, onToggleVisibility, onViewDetails }) => {
   const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools, visibilityStatus } = server;
   const style = statusStyles[status];
   const isTransitioning = status === ServerStatus.STARTING || status === ServerStatus.STOPPING;
@@ -168,14 +167,6 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, 
             ) : (
               <Icon name="play" className="w-5 h-5" />
             )}
-          </button>
-          <button 
-            onClick={onEdit}
-            className="p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors duration-300"
-            aria-label="Edit Server"
-            title="Edit Server"
-          >
-            <Icon name="settings" className="w-5 h-5" />
           </button>
           <button 
             onClick={onDelete}

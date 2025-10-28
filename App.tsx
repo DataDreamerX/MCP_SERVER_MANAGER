@@ -221,7 +221,6 @@ const App: React.FC = () => {
                     key={server.id} 
                     server={server}
                     onToggleStatus={() => toggleServerStatus(server.id, server.status)}
-                    onEdit={() => handleOpenEditModal(server)}
                     onDelete={() => handleInitiateDelete(server)}
                     onToggleVisibility={() => toggleServerVisibility(server.id, server.isPublic)}
                     onViewDetails={() => handleViewServerDetails(server)}

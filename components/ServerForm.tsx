@@ -36,7 +36,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
       setName('');
       setCommand('');
       setTransport(TransportType.SSE);
-      setEndpoint('');
+      setEndpoint('N/A');
       setMaxAgents(10);
       setSourceFiles([]);
       setTools('');
@@ -46,9 +46,16 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !endpoint.trim() || !command.trim()) {
-      alert("Server name, endpoint, and command cannot be empty.");
-      return;
+    if (initialData) {
+      if (!name.trim() || !endpoint.trim() || !command.trim()) {
+        alert("Server name, endpoint, and command cannot be empty.");
+        return;
+      }
+    } else {
+      if (!name.trim() || !command.trim()) {
+        alert("Server name and command cannot be empty.");
+        return;
+      }
     }
     
     let toolsArray: Tool[] = [];
@@ -152,38 +159,42 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
             />
           </div>
           
-          <div>
-            <label htmlFor="endpoint" className="block text-sm font-medium text-gray-600 mb-1">Endpoint URL</label>
-            <input
-                id="endpoint"
-                type="text"
-                value={endpoint}
-                onChange={(e) => setEndpoint(e.target.value)}
-                className="w-full bg-gray-50 text-gray-900 rounded-md px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                placeholder="e.g., 127.0.0.1:8000 or api.domain.com"
-                required
-            />
-          </div>
+          {initialData && (
+            <>
+              <div>
+                <label htmlFor="endpoint" className="block text-sm font-medium text-gray-600 mb-1">Endpoint URL</label>
+                <input
+                    id="endpoint"
+                    type="text"
+                    value={endpoint}
+                    onChange={(e) => setEndpoint(e.target.value)}
+                    className="w-full bg-gray-50 text-gray-900 rounded-md px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                    placeholder="e.g., 127.0.0.1:8000 or api.domain.com"
+                    required
+                />
+              </div>
 
-          <div>
-            <label htmlFor="tools" className="block text-sm font-medium text-gray-600 mb-1">Tools (JSON format, optional)</label>
-            <textarea
-                id="tools"
-                value={tools}
-                onChange={(e) => setTools(e.target.value)}
-                className="w-full bg-gray-50 text-gray-900 rounded-md px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition font-mono text-sm"
-                placeholder={`[
-  {
-    "name": "tool-name",
-    "description": "Tool description.",
-    "args": [
-      { "name": "arg1", "type": "string", "description": "Arg description." }
-    ]
-  }
-]`}
-                rows={6}
-            />
-          </div>
+              <div>
+                <label htmlFor="tools" className="block text-sm font-medium text-gray-600 mb-1">Tools (JSON format, optional)</label>
+                <textarea
+                    id="tools"
+                    value={tools}
+                    onChange={(e) => setTools(e.target.value)}
+                    className="w-full bg-gray-50 text-gray-900 rounded-md px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition font-mono text-sm"
+                    placeholder={`[
+      {
+        "name": "tool-name",
+        "description": "Tool description.",
+        "args": [
+          { "name": "arg1", "type": "string", "description": "Arg description." }
+        ]
+      }
+    ]`}
+                    rows={6}
+                />
+              </div>
+            </>
+          )}
           
           <div>
               <label htmlFor="transport" className="block text-sm font-medium text-gray-600 mb-1">Transport</label>
@@ -192,49 +203,53 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
               </select>
           </div>
           
-           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Source Code (Optional)</label>
-            {sourceFiles.length > 0 ? (
-                <div className="flex items-center justify-between bg-gray-100 rounded-md px-3 py-2 border border-gray-200">
-                    <div className="flex items-center space-x-2 text-gray-700 truncate">
-                        <Icon name="folder" className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                        <span className="truncate">{sourceFiles.length} file{sourceFiles.length > 1 ? 's' : ''} uploaded</span>
+           {initialData && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Source Code (Optional)</label>
+                {sourceFiles.length > 0 ? (
+                    <div className="flex items-center justify-between bg-gray-100 rounded-md px-3 py-2 border border-gray-200">
+                        <div className="flex items-center space-x-2 text-gray-700 truncate">
+                            <Icon name="folder" className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                            <span className="truncate">{sourceFiles.length} file{sourceFiles.length > 1 ? 's' : ''} uploaded</span>
+                        </div>
+                        <button type="button" onClick={handleRemoveFiles} className="p-1 text-gray-400 hover:text-red-500" aria-label="Remove files">
+                          <Icon name="trash" className="w-5 h-5" />
+                        </button>
                     </div>
-                    <button type="button" onClick={handleRemoveFiles} className="p-1 text-gray-400 hover:text-red-500" aria-label="Remove files">
-                       <Icon name="trash" className="w-5 h-5" />
-                    </button>
-                </div>
-            ) : (
-                <div className="relative border-2 border-dashed border-gray-300 rounded-md px-6 py-4 flex justify-center items-center">
-                    <input
-                        type="file"
-                        id="folder-upload"
-                        onChange={handleFileChange}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        {...{ webkitdirectory: "", directory: "" }}
-                    />
-                    <label htmlFor="folder-upload" className="flex flex-col items-center space-y-1 text-center cursor-pointer">
-                        <Icon name="folder-plus" className="w-8 h-8 text-gray-400" />
-                        <span className="font-medium text-green-600">Upload a folder</span>
-                        <span className="text-xs text-gray-500">or drag and drop</span>
-                    </label>
-                </div>
-            )}
-           </div>
+                ) : (
+                    <div className="relative border-2 border-dashed border-gray-300 rounded-md px-6 py-4 flex justify-center items-center">
+                        <input
+                            type="file"
+                            id="folder-upload"
+                            onChange={handleFileChange}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            {...{ webkitdirectory: "", directory: "" }}
+                        />
+                        <label htmlFor="folder-upload" className="flex flex-col items-center space-y-1 text-center cursor-pointer">
+                            <Icon name="folder-plus" className="w-8 h-8 text-gray-400" />
+                            <span className="font-medium text-green-600">Upload a folder</span>
+                            <span className="text-xs text-gray-500">or drag and drop</span>
+                        </label>
+                    </div>
+                )}
+              </div>
 
-          <div>
-            <label htmlFor="max-agents" className="block text-sm font-medium text-gray-600 mb-1">Max Concurrent Agents: {maxAgents}</label>
-            <input
-              id="max-agents"
-              type="range"
-              min="1"
-              max="200"
-              step="1"
-              value={maxAgents}
-              onChange={(e) => setMaxAgents(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
-            />
-          </div>
+              <div>
+                <label htmlFor="max-agents" className="block text-sm font-medium text-gray-600 mb-1">Max Concurrent Agents: {maxAgents}</label>
+                <input
+                  id="max-agents"
+                  type="range"
+                  min="1"
+                  max="200"
+                  step="1"
+                  value={maxAgents}
+                  onChange={(e) => setMaxAgents(Number(e.target.value))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
+                />
+              </div>
+            </>
+           )}
 
           <div>
             <label className="block text-sm font-medium text-gray-600">Visibility</label>
