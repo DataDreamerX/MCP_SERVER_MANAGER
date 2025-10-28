@@ -1,0 +1,5 @@
+{
+  "name": "MCP Server Manager",
+  "description": "A modern dashboard to configure, create, and manage your Multi-agent Computation Platform (MCP) servers for AI agent development and deployment. Features AI-powered name suggestions.",
+  "requestFramePermissions": []
+}
