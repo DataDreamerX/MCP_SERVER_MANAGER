@@ -175,9 +175,9 @@ const App: React.FC = () => {
             />
           )}
 
-          <div className="flex-grow">
+          <div>
             {servers.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-lg h-full flex flex-col justify-center items-center shadow-sm">
+              <div className="text-center py-20 bg-white rounded-lg flex flex-col justify-center items-center shadow-sm">
                 <h2 className="text-2xl font-semibold text-gray-600">No Agent Servers Found</h2>
                 <p className="text-gray-500 mt-2">Get started by creating your first agent server.</p>
                 <button onClick={handleOpenCreateModal} className="mt-6 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300">
@@ -185,7 +185,7 @@ const App: React.FC = () => {
                 </button>
               </div>
             ) : paginatedServers.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-lg h-full flex flex-col justify-center items-center shadow-sm">
+              <div className="text-center py-20 bg-white rounded-lg flex flex-col justify-center items-center shadow-sm">
                 <Icon name="search" className="w-12 h-12 mx-auto text-gray-400" />
                 <h2 className="text-2xl font-semibold text-gray-600 mt-4">No Servers Found</h2>
                 <p className="text-gray-500 mt-2">Your search and filter criteria did not match any servers.</p>
@@ -206,13 +206,15 @@ const App: React.FC = () => {
             )}
           </div>
           
-          {totalPages > 1 && paginatedServers.length > 0 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          )}
+          <div className="mt-auto">
+            {totalPages > 1 && paginatedServers.length > 0 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            )}
+          </div>
         </main>
       </div>
 
