@@ -134,15 +134,14 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, 
 
       {/* Card Footer */}
       <div className="bg-gray-50 p-3 flex justify-between items-center border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
-        <div className="text-xs text-gray-500">
-          <div className="flex items-center">
-            <Icon name="user" className="w-3 h-3 mr-1.5" />
-            <span className="truncate" title={createdBy}>{createdBy}</span>
-          </div>
-          <div className="flex items-center mt-1">
-            <Icon name="clock" className="w-3 h-3 mr-1.5" />
-            <span>{formatDistanceToNow(lastModified)}</span>
-          </div>
+        <div className="text-xs text-gray-500 min-w-0">
+            <div className="truncate">
+                <span title={`Created by ${createdBy}`} className="font-semibold text-gray-700">{createdBy}</span>
+                <span className="text-gray-400 mx-1.5" aria-hidden="true">&bull;</span>
+                <span title={`Last updated: ${new Date(lastModified).toLocaleString()}`}>
+                    Updated {formatDistanceToNow(lastModified)}
+                </span>
+            </div>
         </div>
 
         <div className="flex items-center space-x-1">
