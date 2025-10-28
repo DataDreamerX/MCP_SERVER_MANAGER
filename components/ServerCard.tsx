@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ServerConfig, ServerStatus } from '../types';
+import { ServerConfig, ServerStatus, VisibilityStatus } from '../types';
 import { Icon } from './Icon';
 
 interface ServerCardProps {
@@ -36,9 +36,10 @@ const formatDistanceToNow = (isoDate: string) => {
 };
 
 export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, onEdit, onDelete, onToggleVisibility, onViewDetails }) => {
-  const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools } = server;
+  const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools, visibilityStatus } = server;
   const style = statusStyles[status];
   const isTransitioning = status === ServerStatus.STARTING || status === ServerStatus.STOPPING;
+  const isVisibilityTransitioning = visibilityStatus && visibilityStatus !== VisibilityStatus.IDLE;
   const [commandCopied, setCommandCopied] = useState(false);
   const [endpointCopied, setEndpointCopied] = useState(false);
 
@@ -71,10 +72,17 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, 
           </div>
         </div>
         <div className="text-sm text-gray-500 mt-1 flex items-center flex-wrap gap-x-2 gap-y-1">
-          <div className={`text-xs font-semibold px-2 py-1 rounded-full flex items-center space-x-1 ${isPublic ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
-              <Icon name={isPublic ? 'globe-alt' : 'lock-closed'} className="w-3 h-3" />
-              <span>{isPublic ? 'Public' : 'Private'}</span>
-          </div>
+          {isVisibilityTransitioning ? (
+              <div className={`text-xs font-semibold px-2 py-1 rounded-full flex items-center space-x-1 bg-yellow-100 text-yellow-800`}>
+                <Icon name="spinner" className="w-3 h-3 animate-spin" />
+                <span>{visibilityStatus}</span>
+              </div>
+          ) : (
+            <div className={`text-xs font-semibold px-2 py-1 rounded-full flex items-center space-x-1 ${isPublic ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                <Icon name={isPublic ? 'globe-alt' : 'lock-closed'} className="w-3 h-3" />
+                <span>{isPublic ? 'Public' : 'Private'}</span>
+            </div>
+          )}
           <span className="flex-shrink-0 uppercase text-xs font-semibold bg-green-100 text-green-800 px-2 py-1 rounded-full">{transport}</span>
         </div>
       </div>
@@ -140,23 +148,33 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, 
         <div className="flex items-center space-x-1">
           <button
             onClick={onToggleVisibility}
-            className="p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors duration-300"
-            aria-label={isPublic ? 'Make Private' : 'Publish Server'}
+            disabled={isVisibilityTransitioning}
+            className={`p-2 rounded-full transition-colors duration-300 ${isVisibilityTransitioning ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-200'}`}
+            aria-label={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}
+            title={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}
           >
-            <Icon name={isPublic ? 'lock-closed' : 'globe-alt'} className="w-5 h-5" />
+            {isVisibilityTransitioning ? <Icon name="spinner" className="w-5 h-5 animate-spin" /> : <Icon name={isPublic ? 'lock-closed' : 'globe-alt'} className="w-5 h-5" />}
           </button>
           <button
             onClick={onToggleStatus}
             disabled={isTransitioning}
             className={`p-2 rounded-full transition-colors duration-300 ${isTransitioning ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-200'}`}
-            aria-label={status === ServerStatus.ONLINE ? 'Stop Server' : 'Start Server'}
+            aria-label={isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop Server' : 'Start Server')}
+            title={isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop Server' : 'Start Server')}
           >
-            {status === ServerStatus.ONLINE ? <Icon name="stop" className="w-5 h-5" /> : <Icon name="play" className="w-5 h-5" />}
+            {isTransitioning ? (
+              <Icon name="spinner" className="w-5 h-5 animate-spin" />
+            ) : status === ServerStatus.ONLINE ? (
+              <Icon name="stop" className="w-5 h-5" />
+            ) : (
+              <Icon name="play" className="w-5 h-5" />
+            )}
           </button>
           <button 
             onClick={onEdit}
             className="p-2 rounded-full text-gray-500 hover:bg-gray-200 transition-colors duration-300"
             aria-label="Edit Server"
+            title="Edit Server"
           >
             <Icon name="settings" className="w-5 h-5" />
           </button>

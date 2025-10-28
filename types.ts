@@ -5,6 +5,12 @@ export enum ServerStatus {
   STOPPING = 'Stopping',
 }
 
+export enum VisibilityStatus {
+  IDLE = 'Idle',
+  PUBLISHING = 'Publishing',
+  UNPUBLISHING = 'Unpublishing',
+}
+
 export enum TransportType {
   SSE = 'sse',
   STREAMABLE_HTTP = 'streamable-http',
@@ -41,4 +47,5 @@ export interface ServerConfig {
   lastModified: string;
   isPublic: boolean;
   tools?: Tool[];
+  visibilityStatus?: VisibilityStatus;
 }
