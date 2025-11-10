@@ -95,7 +95,8 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-        const filePromises = Array.from(files).map(file => {
+        // Fix: Explicitly type `file` as `File` to resolve type errors.
+        const filePromises = Array.from(files).map((file: File) => {
             return new Promise<SourceFile>((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (event) => {

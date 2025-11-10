@@ -8,7 +8,7 @@ import { StatusFilter } from './components/StatusFilter';
 import { ServerConfig, ServerStatus, TransportType, Tool, VisibilityStatus } from './types';
 import { Icon } from './components/Icon';
 import { DeleteConfirmationModal } from './components/DeleteConfirmationModal';
-import { ServerDetailModal } from './components/ServerDetailModal';
+import { ServerDetailPage } from './components/ServerDetailModal';
 
 const initialServers: ServerConfig[] = [
   { id: '1', name: 'Project Chimera', command: 'mcp-agent --run research --max-agents 10', status: ServerStatus.ONLINE, transport: TransportType.SSE, endpoint: '192.168.1.101:8080', agentsRunning: 8, maxAgents: 10, createdBy: 'admin@mcp.com', lastModified: '2023-10-27T10:00:00Z', isPublic: true, tools: [
@@ -31,7 +31,7 @@ const initialServers: ServerConfig[] = [
 const ITEMS_PER_PAGE = 6;
 
 type StatusFilterType = 'All' | ServerStatus;
-type ModalContent = 'form' | 'delete' | 'detail' | null;
+type ModalContent = 'form' | 'delete' | null;
 
 const App: React.FC = () => {
   const [servers, setServers] = useState<ServerConfig[]>(initialServers);
@@ -55,14 +55,16 @@ const App: React.FC = () => {
   
   const handleViewServerDetails = useCallback((server: ServerConfig) => {
     setViewingServer(server);
-    setModalContent('detail');
+  }, []);
+
+  const handleReturnToList = useCallback(() => {
+    setViewingServer(null);
   }, []);
 
   const handleCloseModal = useCallback(() => {
     setModalContent(null);
     setEditingServer(null);
     setServerToDelete(null);
-    setViewingServer(null);
   }, []);
 
   const handleSaveServer = useCallback((serverData: Omit<ServerConfig, 'id' | 'status' | 'agentsRunning' | 'createdBy' | 'lastModified'>) => {
@@ -116,23 +118,39 @@ const App: React.FC = () => {
     const transitionStatus = isOnline ? ServerStatus.STOPPING : ServerStatus.STARTING;
     const finalStatus = isOnline ? ServerStatus.OFFLINE : ServerStatus.ONLINE;
 
-    setServers(prev => prev.map(s => s.id === id ? { ...s, status: transitionStatus, lastModified: new Date().toISOString() } : s));
+    const updateServer = (server: ServerConfig | null) => server && server.id === id ? { ...server, status: transitionStatus, lastModified: new Date().toISOString() } : server;
+    setServers(prev => prev.map(s => updateServer(s) as ServerConfig));
+    if (viewingServer?.id === id) {
+        setViewingServer(updateServer(viewingServer) as ServerConfig);
+    }
 
     setTimeout(() => {
-       setServers(prev => prev.map(s => s.id === id ? { ...s, status: finalStatus, agentsRunning: finalStatus === ServerStatus.ONLINE ? Math.floor(Math.random() * s.maxAgents) : 0 } : s));
+      const updateFinal = (server: ServerConfig | null) => server && server.id === id ? { ...server, status: finalStatus, agentsRunning: finalStatus === ServerStatus.ONLINE ? Math.floor(Math.random() * server.maxAgents) : 0 } : server;
+       setServers(prev => prev.map(s => updateFinal(s) as ServerConfig));
+       if (viewingServer?.id === id) {
+           setViewingServer(updateFinal(viewingServer) as ServerConfig);
+       }
     }, 2000);
-  }, []);
+  }, [viewingServer]);
 
   const toggleServerVisibility = useCallback((id: string, isCurrentlyPublic: boolean) => {
     const transitionStatus = isCurrentlyPublic ? VisibilityStatus.UNPUBLISHING : VisibilityStatus.PUBLISHING;
     const finalIsPublic = !isCurrentlyPublic;
 
-    setServers(prev => prev.map(s => s.id === id ? { ...s, visibilityStatus: transitionStatus, lastModified: new Date().toISOString() } : s));
-
+    const updateServer = (server: ServerConfig | null) => server && server.id === id ? { ...server, visibilityStatus: transitionStatus, lastModified: new Date().toISOString() } : server;
+    setServers(prev => prev.map(s => updateServer(s) as ServerConfig));
+    if (viewingServer?.id === id) {
+        setViewingServer(updateServer(viewingServer) as ServerConfig);
+    }
+    
     setTimeout(() => {
-       setServers(prev => prev.map(s => s.id === id ? { ...s, isPublic: finalIsPublic, visibilityStatus: VisibilityStatus.IDLE } : s));
+       const updateFinal = (server: ServerConfig | null) => server && server.id === id ? { ...server, isPublic: finalIsPublic, visibilityStatus: VisibilityStatus.IDLE } : server;
+       setServers(prev => prev.map(s => updateFinal(s) as ServerConfig));
+       if (viewingServer?.id === id) {
+           setViewingServer(updateFinal(viewingServer) as ServerConfig);
+       }
     }, 2000);
-  }, []);
+  }, [viewingServer]);
 
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
@@ -183,64 +201,74 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-800 font-sans flex flex-col">
-      <div className="container mx-auto px-4 py-8 flex flex-col flex-grow">
-        <Header 
-          oncreateServer={handleOpenCreateModal}
-          searchQuery={searchQuery}
-          onSearchChange={handleSearchChange}
+      {viewingServer ? (
+        <ServerDetailPage 
+          server={viewingServer} 
+          onReturnToList={handleReturnToList}
+          onToggleStatus={() => toggleServerStatus(viewingServer.id, viewingServer.status)}
+          onToggleVisibility={() => toggleServerVisibility(viewingServer.id, viewingServer.isPublic)}
+          onDelete={() => handleInitiateDelete(viewingServer)}
         />
-        
-        <main className="mt-8 flex flex-col flex-grow">
-          {servers.length > 0 && (
-            <StatusFilter
-              currentFilter={statusFilter}
-              onFilterChange={handleStatusFilterChange}
-              serverCounts={serverCounts}
-            />
-          )}
-
-          <div>
-            {servers.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-lg flex flex-col justify-center items-center shadow-sm">
-                <h2 className="text-2xl font-semibold text-gray-600">No Agent Servers Found</h2>
-                <p className="text-gray-500 mt-2">Get started by creating your first agent server.</p>
-                <button onClick={handleOpenCreateModal} className="mt-6 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300">
-                  Create Your First Server
-                </button>
-              </div>
-            ) : paginatedServers.length === 0 ? (
-              <div className="text-center py-20 bg-white rounded-lg flex flex-col justify-center items-center shadow-sm">
-                <Icon name="search" className="w-12 h-12 mx-auto text-gray-400" />
-                <h2 className="text-2xl font-semibold text-gray-600 mt-4">No Servers Found</h2>
-                <p className="text-gray-500 mt-2">Your search and filter criteria did not match any servers.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {paginatedServers.map(server => (
-                  <ServerCard 
-                    key={server.id} 
-                    server={server}
-                    onToggleStatus={() => toggleServerStatus(server.id, server.status)}
-                    onDelete={() => handleInitiateDelete(server)}
-                    onToggleVisibility={() => toggleServerVisibility(server.id, server.isPublic)}
-                    onViewDetails={() => handleViewServerDetails(server)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+      ) : (
+        <div className="container mx-auto px-4 py-8 flex flex-col flex-grow">
+          <Header 
+            oncreateServer={handleOpenCreateModal}
+            searchQuery={searchQuery}
+            onSearchChange={handleSearchChange}
+          />
           
-          <div className="mt-auto">
-            {totalPages > 1 && paginatedServers.length > 0 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
+          <main className="mt-8 flex flex-col flex-grow">
+            {servers.length > 0 && (
+              <StatusFilter
+                currentFilter={statusFilter}
+                onFilterChange={handleStatusFilterChange}
+                serverCounts={serverCounts}
               />
             )}
-          </div>
-        </main>
-      </div>
+
+            <div>
+              {servers.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-lg flex flex-col justify-center items-center shadow-sm">
+                  <h2 className="text-2xl font-semibold text-gray-600">No Agent Servers Found</h2>
+                  <p className="text-gray-500 mt-2">Get started by creating your first agent server.</p>
+                  <button onClick={handleOpenCreateModal} className="mt-6 bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300">
+                    Create Your First Server
+                  </button>
+                </div>
+              ) : paginatedServers.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-lg flex flex-col justify-center items-center shadow-sm">
+                  <Icon name="search" className="w-12 h-12 mx-auto text-gray-400" />
+                  <h2 className="text-2xl font-semibold text-gray-600 mt-4">No Servers Found</h2>
+                  <p className="text-gray-500 mt-2">Your search and filter criteria did not match any servers.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {paginatedServers.map(server => (
+                    <ServerCard 
+                      key={server.id} 
+                      server={server}
+                      onToggleStatus={() => toggleServerStatus(server.id, server.status)}
+                      onDelete={() => handleInitiateDelete(server)}
+                      onToggleVisibility={() => toggleServerVisibility(server.id, server.isPublic)}
+                      onViewDetails={() => handleViewServerDetails(server)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-auto">
+              {totalPages > 1 && paginatedServers.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </div>
+          </main>
+        </div>
+      )}
 
       <Modal isOpen={!!modalContent} onClose={handleCloseModal}>
         {modalContent === 'form' && (
@@ -255,12 +283,6 @@ const App: React.FC = () => {
             server={serverToDelete}
             onConfirm={handleConfirmDelete}
             onCancel={handleCloseModal}
-          />
-        )}
-        {modalContent === 'detail' && viewingServer && (
-          <ServerDetailModal
-            server={viewingServer}
-            onClose={handleCloseModal}
           />
         )}
       </Modal>
