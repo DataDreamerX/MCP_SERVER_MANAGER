@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ServerConfig, ServerStatus, VisibilityStatus } from '../types';
 import { Icon } from './Icon';
+import { Tooltip } from './Tooltip';
 
 interface ServerCardProps {
   server: ServerConfig;
@@ -135,52 +136,55 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, 
       <div className="bg-gray-50 p-3 flex justify-between items-center border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
         <div className="text-xs text-gray-500 min-w-0">
             <div className="truncate">
-                <span title={`Created by ${createdBy}`} className="font-semibold text-gray-700">{createdBy}</span>
+                <span className="font-semibold text-gray-700">{createdBy}</span>
                 <span className="text-gray-400 mx-1.5" aria-hidden="true">&bull;</span>
-                <span title={`Last updated: ${new Date(lastModified).toLocaleString()}`}>
+                <span>
                     Updated {formatDistanceToNow(lastModified)}
                 </span>
             </div>
         </div>
 
         <div className="flex items-center space-x-1">
-          <button
-            onClick={onToggleVisibility}
-            disabled={isVisibilityTransitioning}
-            className={`p-2 rounded-full transition-colors duration-300 ${isVisibilityTransitioning ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-200'}`}
-            aria-label={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}
-            title={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}
-          >
-            {isVisibilityTransitioning ? <Icon name="spinner" className="w-5 h-5 animate-spin" /> : <Icon name={isPublic ? 'lock-closed' : 'globe-alt'} className="w-5 h-5" />}
-          </button>
-          <button
-            onClick={onToggleStatus}
-            disabled={isTransitioning}
-            className={`p-2 rounded-full transition-colors duration-300 ${isTransitioning ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-200'}`}
-            aria-label={isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop Server' : 'Start Server')}
-            title={isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop Server' : 'Start Server')}
-          >
-            {isTransitioning ? (
-              <Icon name="spinner" className="w-5 h-5 animate-spin" />
-            ) : status === ServerStatus.ONLINE ? (
-              <Icon name="stop" className="w-5 h-5" />
-            ) : (
-              <Icon name="play" className="w-5 h-5" />
-            )}
-          </button>
-          <button 
-            onClick={onDelete}
-            disabled={status !== ServerStatus.OFFLINE}
-            className={`p-2 rounded-full transition-colors duration-300 ${
-              status !== ServerStatus.OFFLINE
-                ? 'text-gray-400 cursor-not-allowed'
-                : 'text-gray-500 hover:bg-red-100 hover:text-red-600'
-            }`}
-            aria-label="Delete Server"
-            title={status !== ServerStatus.OFFLINE ? 'Server must be offline to be deleted' : 'Delete Server'}
-          >
-            <Icon name="trash" className="w-5 h-5" />
-          </button>
+          <Tooltip content={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}>
+            <button
+              onClick={onToggleVisibility}
+              disabled={isVisibilityTransitioning}
+              className={`p-2 rounded-full transition-colors duration-300 ${isVisibilityTransitioning ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-200'}`}
+              aria-label={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}
+            >
+              {isVisibilityTransitioning ? <Icon name="spinner" className="w-5 h-5 animate-spin" /> : <Icon name={isPublic ? 'lock-closed' : 'globe-alt'} className="w-5 h-5" />}
+            </button>
+          </Tooltip>
+          <Tooltip content={isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop Server' : 'Start Server')}>
+            <button
+              onClick={onToggleStatus}
+              disabled={isTransitioning}
+              className={`p-2 rounded-full transition-colors duration-300 ${isTransitioning ? 'text-gray-400 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-200'}`}
+              aria-label={isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop Server' : 'Start Server')}
+            >
+              {isTransitioning ? (
+                <Icon name="spinner" className="w-5 h-5 animate-spin" />
+              ) : status === ServerStatus.ONLINE ? (
+                <Icon name="stop" className="w-5 h-5" />
+              ) : (
+                <Icon name="play" className="w-5 h-5" />
+              )}
+            </button>
+          </Tooltip>
+          <Tooltip content={status !== ServerStatus.OFFLINE ? 'Server must be offline to be deleted' : 'Delete Server'}>
+            <button 
+              onClick={onDelete}
+              disabled={status !== ServerStatus.OFFLINE}
+              className={`p-2 rounded-full transition-colors duration-300 ${
+                status !== ServerStatus.OFFLINE
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-500 hover:bg-red-100 hover:text-red-600'
+              }`}
+              aria-label="Delete Server"
+            >
+              <Icon name="trash" className="w-5 h-5" />
+            </button>
+          </Tooltip>
         </div>
       </div>
     </div>

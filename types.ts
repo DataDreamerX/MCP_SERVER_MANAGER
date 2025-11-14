@@ -48,4 +48,5 @@ export interface ServerConfig {
   isPublic: boolean;
   tools?: Tool[];
   visibilityStatus?: VisibilityStatus;
+  sdkVersion?: string;
 }

@@ -38,7 +38,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
     >
       <div 
         ref={modalRef} 
-        className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto"
+        className="bg-white rounded-lg shadow-xl w-full max-w-5xl mx-auto"
         role="dialog"
         aria-modal="true"
       >

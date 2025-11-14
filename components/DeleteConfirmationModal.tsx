@@ -47,7 +47,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
                     type="text"
                     value={confirmationText}
                     onChange={(e) => setConfirmationText(e.target.value)}
-                    className="w-full bg-gray-50 text-gray-900 rounded-md px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                    className="w-full bg-gray-50 text-gray-900 rounded-md px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 transition"
                     autoComplete="off"
                     autoFocus
                 />

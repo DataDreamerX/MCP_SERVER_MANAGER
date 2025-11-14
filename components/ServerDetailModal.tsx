@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ServerConfig, ServerStatus, VisibilityStatus } from '../types';
 import { Icon } from './Icon';
+import { Tooltip } from './Tooltip';
 
 interface ServerDetailPageProps {
   server: ServerConfig;
@@ -58,7 +59,7 @@ const CopyableField: React.FC<{ label: string; value: string; codeStyle?: string
 export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onReturnToList, onToggleStatus, onToggleVisibility, onDelete }) => {
   if (!server) return null;
 
-  const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools, maxAgents, visibilityStatus } = server;
+  const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools, maxAgents, visibilityStatus, sdkVersion } = server;
   const style = statusStyles[status];
   const hasTools = tools && tools.length > 0;
   const isTransitioning = status === ServerStatus.STARTING || status === ServerStatus.STOPPING;
@@ -89,44 +90,49 @@ export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onRe
                     </div>
                 </div>
                 <div className="flex items-center space-x-2 flex-shrink-0">
-                  <button
-                    onClick={onToggleVisibility}
-                    disabled={isVisibilityTransitioning}
-                    className={`flex items-center space-x-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-300 disabled:cursor-not-allowed ${
-                        isVisibilityTransitioning
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                    }`}
-                    aria-label={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}
-                  >
-                    {isVisibilityTransitioning ? <Icon name="spinner" className="w-4 h-4 animate-spin" /> : <Icon name={isPublic ? 'lock-closed' : 'globe-alt'} className="w-4 h-4" />}
-                    <span>{isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}</span>
-                  </button>
-                  <button
-                    onClick={onToggleStatus}
-                    disabled={isTransitioning}
-                    className={`flex items-center space-x-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-300 disabled:cursor-not-allowed ${
-                        isTransitioning
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : status === ServerStatus.ONLINE
-                          ? 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                          : 'bg-green-100 text-green-800 hover:bg-green-200'
-                    }`}
-                    aria-label={isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop Server' : 'Start Server')}
-                  >
-                    {isTransitioning ? <Icon name="spinner" className="w-4 h-4 animate-spin" /> : <Icon name={status === ServerStatus.ONLINE ? 'stop' : 'play'} className="w-4 h-4" />}
-                    <span>{isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop' : 'Start')}</span>
-                  </button>
-                  <button 
-                    onClick={onDelete}
-                    disabled={status !== ServerStatus.OFFLINE}
-                    className={`flex items-center space-x-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-300 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 bg-red-100 text-red-800 hover:bg-red-200`}
-                    aria-label="Delete Server"
-                    title={status !== ServerStatus.OFFLINE ? 'Server must be offline to be deleted' : 'Delete Server'}
-                  >
-                    <Icon name="trash" className="w-4 h-4" />
-                    <span>Delete</span>
-                  </button>
+                  <Tooltip content={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}>
+                    <button
+                      onClick={onToggleVisibility}
+                      disabled={isVisibilityTransitioning}
+                      className={`flex items-center space-x-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-300 disabled:cursor-not-allowed ${
+                          isVisibilityTransitioning
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                      }`}
+                      aria-label={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}
+                    >
+                      {isVisibilityTransitioning ? <Icon name="spinner" className="w-4 h-4 animate-spin" /> : <Icon name={isPublic ? 'lock-closed' : 'globe-alt'} className="w-4 h-4" />}
+                      <span>{isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}</span>
+                    </button>
+                  </Tooltip>
+                  <Tooltip content={isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop Server' : 'Start Server')}>
+                    <button
+                      onClick={onToggleStatus}
+                      disabled={isTransitioning}
+                      className={`flex items-center space-x-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-300 disabled:cursor-not-allowed ${
+                          isTransitioning
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : status === ServerStatus.ONLINE
+                            ? 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                            : 'bg-green-100 text-green-800 hover:bg-green-200'
+                      }`}
+                      aria-label={isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop Server' : 'Start Server')}
+                    >
+                      {isTransitioning ? <Icon name="spinner" className="w-4 h-4 animate-spin" /> : <Icon name={status === ServerStatus.ONLINE ? 'stop' : 'play'} className="w-4 h-4" />}
+                      <span>{isTransitioning ? status : (status === ServerStatus.ONLINE ? 'Stop' : 'Start')}</span>
+                    </button>
+                  </Tooltip>
+                  <Tooltip content={status !== ServerStatus.OFFLINE ? 'Server must be offline to be deleted' : 'Delete Server'}>
+                    <button 
+                      onClick={onDelete}
+                      disabled={status !== ServerStatus.OFFLINE}
+                      className={`flex items-center space-x-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-300 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 bg-red-100 text-red-800 hover:bg-red-200`}
+                      aria-label="Delete Server"
+                    >
+                      <Icon name="trash" className="w-4 h-4" />
+                      <span>Delete</span>
+                    </button>
+                  </Tooltip>
                 </div>
             </div>
         </div>
@@ -144,7 +150,7 @@ export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onRe
 
         <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Metadata</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
                 <p className="text-xs font-semibold text-gray-500 uppercase">Created By</p>
                 <p className="text-gray-800 truncate mt-1 font-medium">{createdBy}</p>
@@ -157,6 +163,12 @@ export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onRe
                 <p className="text-xs font-semibold text-gray-500 uppercase">Max Agents</p>
                 <p className="text-gray-800 font-semibold text-lg mt-1">{maxAgents}</p>
             </div>
+            {sdkVersion && (
+              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">SDK Version</p>
+                  <p className="text-gray-800 font-semibold text-lg mt-1">{sdkVersion}</p>
+              </div>
+            )}
           </div>
         </section>
 
@@ -169,7 +181,7 @@ export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onRe
               </span>
             </h3>
             {hasTools ? (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-4">
                     {tools.map((tool, index) => (
                         <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                             <h4 className="font-bold text-green-700">{tool.name}</h4>
