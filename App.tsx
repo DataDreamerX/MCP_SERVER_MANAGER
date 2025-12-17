@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
 import { ServerCard } from './components/ServerCard';
@@ -132,6 +133,10 @@ const App: React.FC = () => {
     if (editingServer) {
       // Update existing server
       setServers(prev => prev.map(s => s.id === editingServer.id ? { ...s, ...serverData, lastModified: now } : s));
+      // If viewing this server, update the view
+      if (viewingServer && viewingServer.id === editingServer.id) {
+         setViewingServer(prev => prev ? { ...prev, ...serverData, lastModified: now } : null);
+      }
     } else {
       // Create new server
       const newServer: ServerConfig = {
@@ -146,7 +151,7 @@ const App: React.FC = () => {
       setServers(prev => [newServer, ...prev]);
     }
     handleCloseModal();
-  }, [editingServer, handleCloseModal]);
+  }, [editingServer, handleCloseModal, viewingServer]);
   
   const handleInitiateDelete = useCallback((server: ServerConfig) => {
     const skipUntil = localStorage.getItem('skipDeleteConfirmUntil');
@@ -154,22 +159,28 @@ const App: React.FC = () => {
 
     if (skipUntil && now < Number(skipUntil)) {
       setServers(prev => prev.filter(s => s.id !== server.id));
+      if (viewingServer?.id === server.id) {
+          setViewingServer(null);
+      }
     } else {
       setServerToDelete(server);
       setModalContent('delete');
     }
-  }, []);
+  }, [viewingServer]);
 
   const handleConfirmDelete = useCallback((skipToday: boolean) => {
     if (serverToDelete) {
       setServers(prev => prev.filter(s => s.id !== serverToDelete.id));
+      if (viewingServer?.id === serverToDelete.id) {
+          setViewingServer(null);
+      }
       if (skipToday) {
         const expiry = new Date().getTime() + 24 * 60 * 60 * 1000;
         localStorage.setItem('skipDeleteConfirmUntil', expiry.toString());
       }
       handleCloseModal();
     }
-  }, [serverToDelete, handleCloseModal]);
+  }, [serverToDelete, handleCloseModal, viewingServer]);
 
   const toggleServerStatus = useCallback((id: string, currentStatus: ServerStatus) => {
     const isOnline = currentStatus === ServerStatus.ONLINE;
@@ -179,14 +190,14 @@ const App: React.FC = () => {
     const updateServer = (server: ServerConfig | null) => server && server.id === id ? { ...server, status: transitionStatus, lastModified: new Date().toISOString() } : server;
     setServers(prev => prev.map(s => updateServer(s) as ServerConfig));
     if (viewingServer?.id === id) {
-        setViewingServer(updateServer(viewingServer) as ServerConfig);
+        setViewingServer(prev => updateServer(prev) as ServerConfig);
     }
 
     setTimeout(() => {
       const updateFinal = (server: ServerConfig | null) => server && server.id === id ? { ...server, status: finalStatus, agentsRunning: finalStatus === ServerStatus.ONLINE ? Math.floor(Math.random() * server.maxAgents) : 0 } : server;
        setServers(prev => prev.map(s => updateFinal(s) as ServerConfig));
        if (viewingServer?.id === id) {
-           setViewingServer(updateFinal(viewingServer) as ServerConfig);
+           setViewingServer(prev => updateFinal(prev) as ServerConfig);
        }
     }, 2000);
   }, [viewingServer]);
@@ -198,14 +209,14 @@ const App: React.FC = () => {
     const updateServer = (server: ServerConfig | null) => server && server.id === id ? { ...server, visibilityStatus: transitionStatus, lastModified: new Date().toISOString() } : server;
     setServers(prev => prev.map(s => updateServer(s) as ServerConfig));
     if (viewingServer?.id === id) {
-        setViewingServer(updateServer(viewingServer) as ServerConfig);
+        setViewingServer(prev => updateServer(prev) as ServerConfig);
     }
     
     setTimeout(() => {
        const updateFinal = (server: ServerConfig | null) => server && server.id === id ? { ...server, isPublic: finalIsPublic, visibilityStatus: VisibilityStatus.IDLE } : server;
        setServers(prev => prev.map(s => updateFinal(s) as ServerConfig));
        if (viewingServer?.id === id) {
-           setViewingServer(updateFinal(viewingServer) as ServerConfig);
+           setViewingServer(prev => updateFinal(prev) as ServerConfig);
        }
     }, 2000);
   }, [viewingServer]);
@@ -266,6 +277,7 @@ const App: React.FC = () => {
           onToggleStatus={() => toggleServerStatus(viewingServer.id, viewingServer.status)}
           onToggleVisibility={() => toggleServerVisibility(viewingServer.id, viewingServer.isPublic)}
           onDelete={() => handleInitiateDelete(viewingServer)}
+          onEdit={() => handleOpenEditModal(viewingServer)}
         />
       ) : (
         <div className="container mx-auto px-4 py-8 flex flex-col flex-grow">
@@ -309,6 +321,7 @@ const App: React.FC = () => {
                       onDelete={() => handleInitiateDelete(server)}
                       onToggleVisibility={() => toggleServerVisibility(server.id, server.isPublic)}
                       onViewDetails={() => handleViewServerDetails(server)}
+                      onEdit={() => handleOpenEditModal(server)}
                     />
                   ))}
                 </div>

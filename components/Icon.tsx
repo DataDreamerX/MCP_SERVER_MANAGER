@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface IconProps {
@@ -37,6 +38,7 @@ export const Icon: React.FC<IconProps> = ({ name, className = 'w-6 h-6' }) => {
     'wrench-screwdriver': <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.83-5.83M11.42 15.17l2.496-3.03c.527-1.042.215-2.41-.825-2.937l-2.43-1.62a2.652 2.652 0 0 0-2.937.825l-3.03 2.496M11.42 15.17 6.87 19.72a2.652 2.652 0 0 1-3.75 0L3 19.607a2.652 2.652 0 0 1 0-3.75L7.67 11.42" />,
     'arrow-left': <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15m0 0l6.75 6.75M4.5 12l6.75-6.75" />,
     'x-mark': <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />,
+    'pencil': <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />,
   };
 
   return (

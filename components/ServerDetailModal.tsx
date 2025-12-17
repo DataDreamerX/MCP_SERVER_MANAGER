@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ServerConfig, ServerStatus, VisibilityStatus } from '../types';
 import { Icon } from './Icon';
@@ -9,6 +10,7 @@ interface ServerDetailPageProps {
   onToggleStatus: () => void;
   onToggleVisibility: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 const statusStyles: { [key in ServerStatus]: { dot: string; text: string; label: string } } = {
@@ -56,7 +58,7 @@ const CopyableField: React.FC<{ label: string; value: string; codeStyle?: string
   );
 };
 
-export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onReturnToList, onToggleStatus, onToggleVisibility, onDelete }) => {
+export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onReturnToList, onToggleStatus, onToggleVisibility, onDelete, onEdit }) => {
   if (!server) return null;
 
   const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools, maxAgents, visibilityStatus, sdkVersion } = server;
@@ -90,6 +92,16 @@ export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onRe
                     </div>
                 </div>
                 <div className="flex items-center space-x-2 flex-shrink-0">
+                  <Tooltip content="Edit Server">
+                    <button
+                      onClick={onEdit}
+                      className="flex items-center space-x-2 px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-300 bg-gray-100 text-gray-800 hover:bg-gray-200"
+                      aria-label="Edit Server"
+                    >
+                      <Icon name="pencil" className="w-4 h-4" />
+                      <span>Edit</span>
+                    </button>
+                  </Tooltip>
                   <Tooltip content={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}>
                     <button
                       onClick={onToggleVisibility}

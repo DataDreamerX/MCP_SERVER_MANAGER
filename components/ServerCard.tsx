@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ServerConfig, ServerStatus, VisibilityStatus } from '../types';
 import { Icon } from './Icon';
@@ -9,6 +10,7 @@ interface ServerCardProps {
   onDelete: () => void;
   onToggleVisibility: () => void;
   onViewDetails: () => void;
+  onEdit: () => void;
 }
 
 const statusStyles: { [key in ServerStatus]: { dot: string; text: string; label: string } } = {
@@ -35,7 +37,7 @@ const formatDistanceToNow = (isoDate: string) => {
   return "just now";
 };
 
-export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, onDelete, onToggleVisibility, onViewDetails }) => {
+export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, onDelete, onToggleVisibility, onViewDetails, onEdit }) => {
   const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools, visibilityStatus } = server;
   const style = statusStyles[status];
   const isTransitioning = status === ServerStatus.STARTING || status === ServerStatus.STOPPING;
@@ -145,6 +147,15 @@ export const ServerCard: React.FC<ServerCardProps> = ({ server, onToggleStatus, 
         </div>
 
         <div className="flex items-center space-x-1">
+          <Tooltip content="Edit Server">
+            <button
+              onClick={onEdit}
+              className="p-2 rounded-full transition-colors duration-300 text-gray-500 hover:bg-gray-200"
+              aria-label="Edit Server"
+            >
+              <Icon name="pencil" className="w-5 h-5" />
+            </button>
+          </Tooltip>
           <Tooltip content={isVisibilityTransitioning ? visibilityStatus : (isPublic ? 'Make Private' : 'Make Public')}>
             <button
               onClick={onToggleVisibility}

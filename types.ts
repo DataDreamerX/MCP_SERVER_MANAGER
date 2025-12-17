@@ -1,3 +1,4 @@
+
 export enum ServerStatus {
   ONLINE = 'Online',
   OFFLINE = 'Offline',
@@ -49,4 +50,6 @@ export interface ServerConfig {
   tools?: Tool[];
   visibilityStatus?: VisibilityStatus;
   sdkVersion?: string;
+  bearerToken?: string;
+  type?: 'managed' | 'remote';
 }
