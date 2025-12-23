@@ -61,7 +61,7 @@ const CopyableField: React.FC<{ label: string; value: string; codeStyle?: string
 export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onReturnToList, onToggleStatus, onToggleVisibility, onDelete, onEdit }) => {
   if (!server) return null;
 
-  const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools, maxAgents, visibilityStatus, sdkVersion } = server;
+  const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools, maxAgents, visibilityStatus, sdkVersion, headers } = server;
   const style = statusStyles[status];
   const hasTools = tools && tools.length > 0;
   const isTransitioning = status === ServerStatus.STARTING || status === ServerStatus.STOPPING;
@@ -157,6 +157,20 @@ export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onRe
            <div className="space-y-4">
               <CopyableField label="Endpoint" value={endpoint} codeStyle="text-blue-700" />
               <CopyableField label="Command" value={command} codeStyle="text-green-700" />
+              
+              {headers && Object.keys(headers).length > 0 && (
+                <div className="mt-4">
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Custom Headers</label>
+                  <div className="mt-1 space-y-2">
+                    {Object.entries(headers).map(([k, v]) => (
+                      <div key={k} className="flex items-center space-x-2 bg-gray-50 p-2 rounded-md border border-gray-200">
+                        <span className="font-mono text-xs font-bold text-gray-600">{k}:</span>
+                        <span className="font-mono text-xs text-gray-800 truncate" title={v}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
            </div>
         </section>
 

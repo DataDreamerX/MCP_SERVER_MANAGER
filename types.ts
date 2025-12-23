@@ -51,5 +51,6 @@ export interface ServerConfig {
   visibilityStatus?: VisibilityStatus;
   sdkVersion?: string;
   bearerToken?: string;
+  headers?: Record<string, string>;
   type?: 'managed' | 'remote';
 }

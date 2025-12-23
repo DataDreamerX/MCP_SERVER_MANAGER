@@ -29,6 +29,12 @@ interface FormTool {
   };
 }
 
+interface FormHeader {
+  id: number;
+  key: string;
+  value: string;
+}
+
 const defaultParams = { skip: false, top: false, facet: false, filter: false };
 const CURRENT_SDK_VERSION = '1.4.2';
 
@@ -54,20 +60,37 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
   // Remote Server State
   const [remoteName, setRemoteName] = useState('');
   const [remoteUrl, setRemoteUrl] = useState('');
-  const [remoteToken, setRemoteToken] = useState('');
+  const [remoteHeaders, setRemoteHeaders] = useState<FormHeader[]>([]);
+  const [newHeaderKey, setNewHeaderKey] = useState('');
+  const [newHeaderValue, setNewHeaderValue] = useState('');
+  const [headerIdCounter, setHeaderIdCounter] = useState(0);
   const [remoteTransport, setRemoteTransport] = useState<TransportType>(TransportType.SSE);
 
   useEffect(() => {
     if (initialData) {
-      // Determine if the server is remote based on type property, command or presence of token
-      const isRemote = initialData.type === 'remote' || initialData.command === 'Remote Connection' || !!initialData.bearerToken;
+      // Determine if the server is remote based on type property, command or presence of token/headers
+      const isRemote = initialData.type === 'remote' || initialData.command === 'Remote Connection' || !!initialData.bearerToken || !!initialData.headers;
       setActiveTab(isRemote ? 'remote' : 'managed');
 
       if (isRemote) {
         setRemoteName(initialData.name);
         setRemoteUrl(initialData.endpoint);
-        setRemoteToken(initialData.bearerToken || '');
         setRemoteTransport(initialData.transport);
+        
+        // Load headers
+        let loadedHeaders: FormHeader[] = [];
+        if (initialData.headers) {
+          loadedHeaders = Object.entries(initialData.headers).map(([k, v], idx) => ({
+            id: idx,
+            key: k,
+            value: v as string
+          }));
+        } else if (initialData.bearerToken) {
+          // Backward compatibility: Convert bearerToken to Authorization header
+          loadedHeaders = [{ id: 0, key: 'Authorization', value: `Bearer ${initialData.bearerToken}` }];
+        }
+        setRemoteHeaders(loadedHeaders);
+        setHeaderIdCounter(loadedHeaders.length);
       } else {
         setName(initialData.name);
         let parsedTools: FormTool[] = [];
@@ -92,17 +115,13 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
           }
         }
         
+        // Fix: Added explicit FormTool return type to prevent TypeScript from narrowing 'type' to 'azure' | 'neo4j'
         if (parsedTools.length === 0 && initialData.tools) {
-          parsedTools = (initialData.tools || []).map((tool, idx) => {
+          parsedTools = (initialData.tools || []).map((tool, idx): FormTool => {
             const indexMatch = tool.description.match(/from the '([^']+)' index/);
             const typeMatch = tool.description.match(/using (Azure AI Search|Neo4j)/);
             let type: ToolTypeOption = 'azure';
             if (typeMatch && typeMatch[1] === 'Neo4j') type = 'neo4j';
-            // Simple heuristic for python tools if we fall back to metadata parsing, though code is usually only in command
-            if (!typeMatch && !indexMatch) {
-                // Potential python tool if we can't identify others, but without code it's incomplete. 
-                // We'll treat as azure default if unknown for legacy safety, or maybe skip.
-            }
 
             const hasArg = (name: string) => tool.args?.some(arg => arg.name === name);
             return {
@@ -132,7 +151,8 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
       setToolIdCounter(0);
       setRemoteName('');
       setRemoteUrl('');
-      setRemoteToken('');
+      setRemoteHeaders([]);
+      setHeaderIdCounter(0);
       setRemoteTransport(TransportType.SSE);
     }
   }, [initialData]);
@@ -165,10 +185,8 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
     let toolDesc = newToolDescription.trim();
 
     if (newToolType === 'python') {
-        // Extract function name from code, e.g. "def my_function(args):"
         const nameMatch = newToolCode.match(/def\s+([a-zA-Z_][a-zA-Z0-9_]*)/);
         toolName = nameMatch ? nameMatch[1] : `python_fn_${toolIdCounter}`;
-        // Python tools don't need a manually entered description for now
         toolDesc = ''; 
     }
 
@@ -199,6 +217,18 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
     setTools(prev => prev.filter(tool => tool.id !== idToRemove));
   };
 
+  const handleAddHeader = () => {
+    if (!newHeaderKey.trim()) return;
+    setRemoteHeaders(prev => [...prev, { id: headerIdCounter, key: newHeaderKey.trim(), value: newHeaderValue.trim() }]);
+    setHeaderIdCounter(prev => prev + 1);
+    setNewHeaderKey('');
+    setNewHeaderValue('');
+  };
+
+  const handleRemoveHeader = (idToRemove: number) => {
+    setRemoteHeaders(prev => prev.filter(h => h.id !== idToRemove));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -220,7 +250,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                 return {
                     name: tool.name,
                     description: tool.description || 'Custom Python function.',
-                    args: [] // Arguments are defined in the code
+                    args: [] 
                 };
             }
             
@@ -268,7 +298,6 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
             sourceFiles: initialData?.sourceFiles || [],
             isPublic: initialData?.isPublic || false,
             sdkVersion: CURRENT_SDK_VERSION,
-            bearerToken: undefined, // Ensure remote fields are not included/undefined
         };
         onSave(serverData);
     } else {
@@ -282,19 +311,25 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
             return;
         }
 
+        const headersObj: Record<string, string> = {};
+        remoteHeaders.forEach(h => {
+          if (h.key.trim()) {
+            headersObj[h.key.trim()] = h.value;
+          }
+        });
+
         // Isolated Remote Server Data
         const serverData = {
             type: 'remote' as const,
             name: remoteName,
             command: 'Remote Connection',
-            tools: [], // Remote servers don't use the managed tools array
+            tools: [], 
             transport: remoteTransport,
             endpoint: remoteUrl,
-            bearerToken: remoteToken || undefined,
+            headers: headersObj,
             maxAgents: 0,
             sourceFiles: [],
             isPublic: initialData?.isPublic || false,
-            sdkVersion: undefined, // Managed specific field
         };
         onSave(serverData);
     }
@@ -379,20 +414,13 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                             placeholder="e.g., Enterprise Knowledge Graph"
                             required
                         />
-                        <p className="mt-2 text-xs text-gray-500">
-                            Unique identifier for your server on the network.
-                        </p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start h-full">
-                        {/* Left Column: Tool Builder (7 columns) */}
+                        {/* Left Column: Tool Builder */}
                         <div className="lg:col-span-7 flex flex-col gap-6">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-bold text-gray-900">Tool Builder</h3>
-                            </div>
-                            
+                            <h3 className="text-lg font-bold text-gray-900">Tool Builder</h3>
                             <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-6">
-                                {/* Service Type Selector */}
                                 <div>
                                     <label htmlFor="tool-type" className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Service Type</label>
                                     <div className="relative">
@@ -414,7 +442,6 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                                 </div>
                                 
                                 <div className="border-t border-gray-100 pt-6 space-y-5">
-                                    {/* Python Specific Fields */}
                                     {newToolType === 'python' && (
                                         <div>
                                             <label htmlFor="tool-code" className="block text-sm font-medium text-gray-700 mb-2">Python Function Code</label>
@@ -428,17 +455,10 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                                                     className="w-full bg-slate-900 text-green-400 rounded-lg px-4 py-3 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 font-mono text-sm leading-relaxed"
                                                     spellCheck={false}
                                                 />
-                                                <div className="absolute top-2 right-2">
-                                                    <span className="text-xs text-slate-500 font-mono">Python 3.9</span>
-                                                </div>
                                             </div>
-                                            <p className="mt-2 text-xs text-gray-500">
-                                                Define a function. The function name and docstring will be used as the tool name and description.
-                                            </p>
                                         </div>
                                     )}
 
-                                    {/* REST API Specific Fields */}
                                     {newToolType === 'rest-api' && (
                                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                                             <div className="sm:col-span-1">
@@ -464,81 +484,45 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                                         </div>
                                     )}
 
-                                    {/* Azure/Neo4j Specific Fields */}
                                     {newToolType !== 'python' && newToolType !== 'rest-api' && (
                                         <div>
                                             <label htmlFor="index-name" className="block text-sm font-medium text-gray-700 mb-2">Index Name</label>
-                                            <div className="relative">
-                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                    <Icon name="folder" className="h-5 w-5 text-gray-400" />
-                                                </div>
-                                                <input 
-                                                    id="index-name" 
-                                                    type="text" 
-                                                    value={newToolIndex} 
-                                                    onChange={e => setNewToolIndex(e.target.value)} 
-                                                    placeholder="e.g., product-catalog" 
-                                                    className="w-full bg-white text-gray-900 rounded-lg pl-10 pr-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
-                                                />
-                                            </div>
+                                            <input 
+                                                id="index-name" 
+                                                type="text" 
+                                                value={newToolIndex} 
+                                                onChange={e => setNewToolIndex(e.target.value)} 
+                                                placeholder="e.g., product-catalog" 
+                                                className="w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                                            />
                                         </div>
                                     )}
 
-                                    {/* Common Name/Desc Fields (except Python) */}
                                     {newToolType !== 'python' && (
-                                        <>
-                                            <div className="grid grid-cols-1 gap-5">
-                                                <div>
-                                                    <label htmlFor="tool-name" className="block text-sm font-medium text-gray-700 mb-2">Tool Name</label>
-                                                    <input
-                                                        id="tool-name"
-                                                        type="text"
-                                                        value={newToolName}
-                                                        onChange={e => setNewToolName(e.target.value)}
-                                                        placeholder="e.g., search_products"
-                                                        className={`w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border focus:outline-none focus:ring-2 transition ${toolNameError ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-green-500'}`}
-                                                    />
-                                                    {toolNameError && <p className="text-red-500 text-xs mt-1 flex items-center"><Icon name="x-mark" className="w-3 h-3 mr-1"/>{toolNameError}</p>}
-                                                </div>
-                                                <div>
-                                                    <label htmlFor="tool-description" className="block text-sm font-medium text-gray-700 mb-2">Description <span className="text-gray-400 font-normal">(Optional)</span></label>
-                                                    <textarea
-                                                        id="tool-description"
-                                                        rows={3}
-                                                        value={newToolDescription}
-                                                        onChange={e => setNewToolDescription(e.target.value)}
-                                                        placeholder="Describe what this tool does..."
-                                                        className="w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition resize-none"
-                                                    />
-                                                </div>
+                                        <div className="grid grid-cols-1 gap-5">
+                                            <div>
+                                                <label htmlFor="tool-name" className="block text-sm font-medium text-gray-700 mb-2">Tool Name</label>
+                                                <input
+                                                    id="tool-name"
+                                                    type="text"
+                                                    value={newToolName}
+                                                    onChange={e => setNewToolName(e.target.value)}
+                                                    placeholder="e.g., search_products"
+                                                    className={`w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border focus:outline-none focus:ring-2 transition ${toolNameError ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-green-500'}`}
+                                                />
+                                                {toolNameError && <p className="text-red-500 text-xs mt-1">{toolNameError}</p>}
                                             </div>
-
-                                            {/* Parameters (Azure/Neo4j only) */}
-                                            {newToolType !== 'rest-api' && (
-                                                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-3">Optional Parameters</label>
-                                                    <div className="flex flex-wrap gap-4">
-                                                        <label className="flex items-center space-x-2 text-sm text-gray-400 cursor-not-allowed select-none">
-                                                            <div className="w-5 h-5 rounded border border-gray-300 bg-gray-100 flex items-center justify-center">
-                                                                <Icon name="check" className="w-3 h-3 text-gray-400" />
-                                                            </div>
-                                                            <span className="font-mono">query</span>
-                                                        </label>
-                                                        {(['skip', 'top', 'facet', 'filter'] as const).map(param => (
-                                                            <label key={param} className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer group">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={newToolParams[param]}
-                                                                    onChange={(e) => setNewToolParams(p => ({ ...p, [param]: e.target.checked }))}
-                                                                    className="h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer transition"
-                                                                />
-                                                                <span className="font-mono group-hover:text-green-700 transition-colors">{param}</span>
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </>
+                                            <div>
+                                                <label htmlFor="tool-description" className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                                                <textarea
+                                                    id="tool-description"
+                                                    rows={3}
+                                                    value={newToolDescription}
+                                                    onChange={e => setNewToolDescription(e.target.value)}
+                                                    className="w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition resize-none"
+                                                />
+                                            </div>
+                                        </div>
                                     )}
 
                                     <div className="flex justify-end pt-2">
@@ -546,99 +530,39 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                                           type="button"
                                           onClick={handleAddTool}
                                           disabled={isAddToolDisabled}
-                                          className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-all shadow-md hover:shadow-lg disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed transform active:scale-95"
+                                          className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-all shadow-md disabled:bg-gray-300 disabled:cursor-not-allowed"
                                         >
                                             <Icon name="plus" className="w-5 h-5" />
-                                            <span>Add Tool to Server</span>
+                                            <span>Add Tool</span>
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Right Column: List of added tools (5 columns) */}
+                        {/* Right Column: List of added tools */}
                         <div className="lg:col-span-5 flex flex-col h-full min-h-[500px]">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-lg font-bold text-gray-900">Configured Tools</h3>
-                                 <span className="text-xs font-bold bg-gray-200 text-gray-700 px-3 py-1 rounded-full">
-                                    {tools.length} Ready
-                                </span>
-                            </div>
-
-                            <div className="bg-white rounded-xl border border-gray-200 flex-grow shadow-sm overflow-hidden flex flex-col">
+                            <h3 className="text-lg font-bold text-gray-900 mb-6">Configured Tools</h3>
+                            <div className="bg-white rounded-xl border border-gray-200 flex-grow shadow-sm overflow-hidden p-4 space-y-4">
                                 {tools.length > 0 ? (
-                                  <div className="overflow-y-auto p-4 space-y-4 max-h-[600px]">
-                                    {tools.map((tool) => (
-                                      <div key={tool.id} className="group bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md hover:border-green-200 transition-all duration-200">
-                                          {/* Card Header */}
-                                          <div className="px-4 py-3 border-b border-gray-50 flex items-start justify-between bg-gray-50/30">
-                                              <div className="flex flex-col">
-                                                  <div className="flex items-center gap-2 mb-1">
-                                                     <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${getTypeBadgeColor(tool.type)}`}>
-                                                         {tool.type === 'rest-api' ? 'REST' : tool.type}
-                                                     </span>
-                                                     <span className="font-bold text-gray-900 text-sm">{tool.name}</span>
-                                                  </div>
-                                              </div>
-                                              <button 
-                                                type="button" 
-                                                onClick={() => handleRemoveTool(tool.id)} 
-                                                className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors opacity-0 group-hover:opacity-100"
-                                                title="Remove tool"
-                                              >
+                                    tools.map((tool) => (
+                                      <div key={tool.id} className="group bg-white rounded-lg border border-gray-200 shadow-sm p-4 relative hover:border-green-200 transition-colors">
+                                          <div className="flex items-center justify-between mb-2">
+                                              <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${getTypeBadgeColor(tool.type)}`}>
+                                                  {tool.type === 'rest-api' ? 'REST' : tool.type}
+                                              </span>
+                                              <button type="button" onClick={() => handleRemoveTool(tool.id)} className="text-gray-400 hover:text-red-500 transition-colors">
                                                   <Icon name="trash" className="w-4 h-4" />
                                               </button>
                                           </div>
-                                          
-                                          {/* Card Body */}
-                                          <div className="p-4">
-                                              {tool.description && (
-                                                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{tool.description}</p>
-                                              )}
-                                              
-                                              {tool.type === 'python' ? (
-                                                  <div className="mt-2 bg-slate-50 rounded-md border border-slate-100 p-2 overflow-hidden">
-                                                    <pre className="text-xs text-slate-600 font-mono line-clamp-3">
-                                                        {tool.code}
-                                                    </pre>
-                                                  </div>
-                                              ) : tool.type === 'rest-api' ? (
-                                                  <div className="mt-2 flex items-center gap-2 text-xs">
-                                                      <span className={`font-bold px-1.5 py-0.5 rounded ${getMethodBadgeColor(tool.method || 'GET')}`}>
-                                                          {tool.method}
-                                                      </span>
-                                                      <code className="text-gray-600 font-mono bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[200px]" title={tool.endpoint}>
-                                                        {tool.endpoint}
-                                                      </code>
-                                                  </div>
-                                              ) : (
-                                                  <div className="mt-2 space-y-2">
-                                                      <div className="flex items-center gap-2 text-xs">
-                                                        <span className="text-gray-400 uppercase font-semibold text-[10px]">Index</span>
-                                                        <code className="text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded font-mono">{tool.index}</code>
-                                                      </div>
-                                                      <div className="flex flex-wrap gap-1">
-                                                          {Object.entries(tool.params).filter(([,v])=>v).map(([k]) => (
-                                                              <span key={k} className="text-[10px] font-mono bg-green-50 text-green-700 border border-green-100 px-1.5 py-0.5 rounded">
-                                                                  {k}
-                                                              </span>
-                                                          ))}
-                                                      </div>
-                                                  </div>
-                                              )}
-                                          </div>
+                                          <h4 className="font-bold text-gray-900 text-sm">{tool.name}</h4>
+                                          <p className="text-xs text-gray-500 line-clamp-2">{tool.description}</p>
                                       </div>
-                                    ))}
-                                  </div>
+                                    ))
                                 ) : (
-                                    <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-gray-50/50">
-                                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-gray-100">
-                                            <Icon name="wrench-screwdriver" className="w-8 h-8 text-gray-300" />
-                                        </div>
-                                        <h4 className="text-gray-900 font-medium mb-1">No Tools Configured</h4>
-                                        <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                                            Use the builder on the left to add capabilities to your server.
-                                        </p>
+                                    <div className="flex flex-col items-center justify-center h-full text-center py-10">
+                                        <Icon name="wrench-screwdriver" className="w-10 h-10 text-gray-300 mb-2" />
+                                        <p className="text-sm text-gray-500">No tools added yet.</p>
                                     </div>
                                 )}
                             </div>
@@ -646,110 +570,121 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                     </div>
                 </div>
             ) : (
-                <div className="max-w-3xl mx-auto space-y-8">
+                <div className="max-w-4xl mx-auto space-y-8">
                      <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm space-y-6">
-                        <div className="border-b border-gray-100 pb-4 mb-2">
-                            <h3 className="text-lg font-bold text-gray-900">Remote Connection Details</h3>
-                            <p className="text-sm text-gray-500">Connect to an existing running MCP server.</p>
-                        </div>
-                         <div>
-                            <label htmlFor="remote-name" className="block text-sm font-medium text-gray-700 mb-2">
-                                Server Name <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                id="remote-name"
-                                type="text"
-                                value={remoteName}
-                                onChange={(e) => setRemoteName(e.target.value)}
-                                className="w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition shadow-sm"
-                                placeholder="e.g., Remote Production Server"
-                                required
-                            />
-                         </div>
-
-                         <div>
-                            <label htmlFor="remote-url" className="block text-sm font-medium text-gray-700 mb-2">
-                                Server URL <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-                                    <Icon name="link" className="h-5 w-5" />
-                                </span>
+                        <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-4">Remote Connection Details</h3>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label htmlFor="remote-name" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Server Name <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    id="remote-name"
+                                    type="text"
+                                    value={remoteName}
+                                    onChange={(e) => setRemoteName(e.target.value)}
+                                    className="w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                                    placeholder="e.g., API Gateway"
+                                    required
+                                />
+                             </div>
+                             <div>
+                                <label htmlFor="remote-url" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Server URL <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                     id="remote-url"
                                     type="url"
                                     value={remoteUrl}
                                     onChange={(e) => setRemoteUrl(e.target.value)}
-                                    className="w-full bg-white text-gray-900 rounded-lg pl-10 pr-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition shadow-sm"
-                                    placeholder="https://api.example.com/mcp"
+                                    className="w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                                    placeholder="https://mcp.example.com"
                                     required
                                 />
+                             </div>
+                         </div>
+
+                         {/* Custom Headers Section */}
+                         <div className="pt-6 border-t border-gray-100">
+                            <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center">
+                                <Icon name="lock-closed" className="w-4 h-4 mr-2 text-gray-400" />
+                                Custom Headers
+                            </h4>
+                            
+                            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+                                    <div className="sm:col-span-2">
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Key</label>
+                                        <input 
+                                          type="text" 
+                                          value={newHeaderKey}
+                                          onChange={e => setNewHeaderKey(e.target.value)}
+                                          placeholder="e.g., X-API-Key"
+                                          className="w-full bg-white text-gray-900 rounded-lg px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none text-sm"
+                                        />
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Value</label>
+                                        <input 
+                                          type="text" 
+                                          value={newHeaderValue}
+                                          onChange={e => setNewHeaderValue(e.target.value)}
+                                          placeholder="e.g., your-secret-token"
+                                          className="w-full bg-white text-gray-900 rounded-lg px-3 py-2 border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none text-sm"
+                                        />
+                                    </div>
+                                    <button 
+                                      type="button"
+                                      onClick={handleAddHeader}
+                                      className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg text-sm transition-colors"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+
+                                {remoteHeaders.length > 0 && (
+                                    <div className="mt-4 overflow-hidden border border-gray-200 rounded-lg bg-white">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Key</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Value</th>
+                                                    <th className="px-4 py-2 text-right"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {remoteHeaders.map(header => (
+                                                    <tr key={header.id}>
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-900">{header.key}</td>
+                                                        <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-500 truncate max-w-[150px]">••••••••</td>
+                                                        <td className="px-4 py-2 text-right">
+                                                            <button 
+                                                              type="button"
+                                                              onClick={() => handleRemoveHeader(header.id)}
+                                                              className="text-gray-400 hover:text-red-600 p-1"
+                                                            >
+                                                                <Icon name="trash" className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                          </div>
 
-                         <div>
-                            <label htmlFor="remote-token" className="block text-sm font-medium text-gray-700 mb-2">
-                                Bearer Token <span className="text-gray-400 font-normal">(Optional)</span>
-                            </label>
-                            <input
-                                id="remote-token"
-                                type="password"
-                                value={remoteToken}
-                                onChange={(e) => setRemoteToken(e.target.value)}
-                                className="w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition shadow-sm"
-                                placeholder="sk-..."
-                            />
-                         </div>
-
-                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                Transport Type
-                            </label>
+                         <div className="pt-6 border-t border-gray-100">
+                            <label className="block text-sm font-medium text-gray-700 mb-4">Transport Protocol</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                 <label 
-                                    className={`relative flex items-start p-4 border rounded-xl cursor-pointer transition-all duration-200 ${
-                                        remoteTransport === TransportType.SSE 
-                                        ? 'border-green-500 bg-green-50/50 shadow-sm ring-1 ring-green-500' 
-                                        : 'border-gray-200 hover:bg-gray-50'
-                                    }`}
-                                 >
-                                    <div className="flex items-center h-5">
-                                        <input
-                                            type="radio"
-                                            name="transport"
-                                            value={TransportType.SSE}
-                                            checked={remoteTransport === TransportType.SSE}
-                                            onChange={() => setRemoteTransport(TransportType.SSE)}
-                                            className="h-4 w-4 text-green-600 border-gray-300 focus:ring-green-500"
-                                        />
-                                    </div>
-                                    <div className="ml-3">
-                                        <span className="block text-sm font-bold text-gray-900">SSE (Server-Sent Events)</span>
-                                        <span className="block text-xs text-gray-500 mt-1">Standard for real-time updates.</span>
-                                    </div>
+                                 <label className={`relative flex items-start p-4 border rounded-xl cursor-pointer transition-all ${remoteTransport === TransportType.SSE ? 'border-green-500 bg-green-50 shadow-sm ring-1 ring-green-500' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                    <input type="radio" checked={remoteTransport === TransportType.SSE} onChange={() => setRemoteTransport(TransportType.SSE)} className="mt-1 h-4 w-4 text-green-600 border-gray-300" />
+                                    <div className="ml-3"><span className="block text-sm font-bold text-gray-900">SSE</span><span className="block text-xs text-gray-500">Standard real-time updates.</span></div>
                                  </label>
-
-                                 <label 
-                                    className={`relative flex items-start p-4 border rounded-xl cursor-pointer transition-all duration-200 ${
-                                        remoteTransport === TransportType.STREAMABLE_HTTP 
-                                        ? 'border-green-500 bg-green-50/50 shadow-sm ring-1 ring-green-500' 
-                                        : 'border-gray-200 hover:bg-gray-50'
-                                    }`}
-                                 >
-                                    <div className="flex items-center h-5">
-                                        <input
-                                            type="radio"
-                                            name="transport"
-                                            value={TransportType.STREAMABLE_HTTP}
-                                            checked={remoteTransport === TransportType.STREAMABLE_HTTP}
-                                            onChange={() => setRemoteTransport(TransportType.STREAMABLE_HTTP)}
-                                            className="h-4 w-4 text-green-600 border-gray-300 focus:ring-green-500"
-                                        />
-                                    </div>
-                                    <div className="ml-3">
-                                        <span className="block text-sm font-bold text-gray-900">Streamable HTTP</span>
-                                        <span className="block text-xs text-gray-500 mt-1">Optimized for high-throughput.</span>
-                                    </div>
+                                 <label className={`relative flex items-start p-4 border rounded-xl cursor-pointer transition-all ${remoteTransport === TransportType.STREAMABLE_HTTP ? 'border-green-500 bg-green-50 shadow-sm ring-1 ring-green-500' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                    <input type="radio" checked={remoteTransport === TransportType.STREAMABLE_HTTP} onChange={() => setRemoteTransport(TransportType.STREAMABLE_HTTP)} className="mt-1 h-4 w-4 text-green-600 border-gray-300" />
+                                    <div className="ml-3"><span className="block text-sm font-bold text-gray-900">Streamable HTTP</span><span className="block text-xs text-gray-500">Optimized for high-throughput streams.</span></div>
                                  </label>
                             </div>
                          </div>
@@ -759,22 +694,16 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
         </div>
       </div>
       
-      {/* Footer */}
-      <div className="bg-white px-8 py-5 border-t border-gray-200 flex justify-between items-center z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center space-x-2 text-sm text-gray-500">
+      <div className="bg-white px-8 py-5 border-t border-gray-200 flex justify-between items-center z-10">
+        <div className="text-sm text-gray-500">
             {activeTab === 'managed' && (
-              <>
-                <Icon name="cpu-chip" className="w-4 h-4 text-gray-400" />
-                <span>SDK Version: <span className="font-semibold text-gray-700">{CURRENT_SDK_VERSION}</span></span>
-              </>
+              <span className="flex items-center gap-2"><Icon name="cpu-chip" className="w-4 h-4" /> SDK {CURRENT_SDK_VERSION}</span>
             )}
         </div>
         <div className="flex space-x-3">
-            <button type="button" onClick={onCancel} className="bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2.5 px-6 rounded-lg transition-colors border border-gray-300 shadow-sm">
-              Cancel
-            </button>
-            <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg">
-              {initialData ? 'Save Configuration' : activeTab === 'managed' ? 'Create Managed Server' : 'Connect Remote Server'}
+            <button type="button" onClick={onCancel} className="bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2.5 px-6 rounded-lg border border-gray-300 shadow-sm transition-colors">Cancel</button>
+            <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-md transition-all">
+              {initialData ? 'Save Changes' : activeTab === 'managed' ? 'Create Managed Server' : 'Connect Remote Server'}
             </button>
         </div>
       </div>
