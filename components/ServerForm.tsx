@@ -65,17 +65,22 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
   const [newHeaderValue, setNewHeaderValue] = useState('');
   const [headerIdCounter, setHeaderIdCounter] = useState(0);
   const [remoteTransport, setRemoteTransport] = useState<TransportType>(TransportType.SSE);
+  const [remoteClientId, setRemoteClientId] = useState('');
+  const [remoteClientSecret, setRemoteClientSecret] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     if (initialData) {
-      // Determine if the server is remote based on type property, command or presence of token/headers
-      const isRemote = initialData.type === 'remote' || initialData.command === 'Remote Connection' || !!initialData.bearerToken || !!initialData.headers;
+      const isRemote = initialData.type === 'remote' || initialData.command === 'Remote Connection' || !!initialData.bearerToken || !!initialData.headers || !!initialData.clientId;
       setActiveTab(isRemote ? 'remote' : 'managed');
 
       if (isRemote) {
         setRemoteName(initialData.name);
         setRemoteUrl(initialData.endpoint);
         setRemoteTransport(initialData.transport);
+        setRemoteClientId(initialData.clientId || '');
+        setRemoteClientSecret(initialData.clientSecret || '');
+        if (initialData.clientId || initialData.clientSecret) setShowAdvanced(true);
         
         // Load headers
         let loadedHeaders: FormHeader[] = [];
@@ -86,7 +91,6 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
             value: v as string
           }));
         } else if (initialData.bearerToken) {
-          // Backward compatibility: Convert bearerToken to Authorization header
           loadedHeaders = [{ id: 0, key: 'Authorization', value: `Bearer ${initialData.bearerToken}` }];
         }
         setRemoteHeaders(loadedHeaders);
@@ -115,7 +119,6 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
           }
         }
         
-        // Fix: Added explicit FormTool return type to prevent TypeScript from narrowing 'type' to 'azure' | 'neo4j'
         if (parsedTools.length === 0 && initialData.tools) {
           parsedTools = (initialData.tools || []).map((tool, idx): FormTool => {
             const indexMatch = tool.description.match(/from the '([^']+)' index/);
@@ -144,7 +147,6 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
         setToolIdCounter(parsedTools.length);
       }
     } else {
-      // Reset all states
       setActiveTab('managed');
       setName('');
       setTools([]);
@@ -154,6 +156,9 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
       setRemoteHeaders([]);
       setHeaderIdCounter(0);
       setRemoteTransport(TransportType.SSE);
+      setRemoteClientId('');
+      setRemoteClientSecret('');
+      setShowAdvanced(false);
     }
   }, [initialData]);
 
@@ -286,7 +291,6 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
             };
         });
 
-        // Isolated Managed Server Data
         const serverData = {
             type: 'managed' as const,
             name,
@@ -301,7 +305,6 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
         };
         onSave(serverData);
     } else {
-        // Remote Server Submit Logic
         if (!remoteName.trim()) {
             alert("Server Name is required.");
             return;
@@ -318,7 +321,6 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
           }
         });
 
-        // Isolated Remote Server Data
         const serverData = {
             type: 'remote' as const,
             name: remoteName,
@@ -327,6 +329,8 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
             transport: remoteTransport,
             endpoint: remoteUrl,
             headers: headersObj,
+            clientId: remoteClientId.trim() || undefined,
+            clientSecret: remoteClientSecret.trim() || undefined,
             maxAgents: 0,
             sourceFiles: [],
             isPublic: initialData?.isPublic || false,
@@ -341,16 +345,6 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
         case 'rest-api': return 'bg-purple-100 text-purple-800 border-purple-200';
         case 'neo4j': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
         default: return 'bg-blue-100 text-blue-800 border-blue-200';
-    }
-  };
-
-  const getMethodBadgeColor = (method: string) => {
-    switch (method) {
-        case 'GET': return 'bg-blue-100 text-blue-800';
-        case 'POST': return 'bg-green-100 text-green-800';
-        case 'DELETE': return 'bg-red-100 text-red-800';
-        case 'PUT': return 'bg-orange-100 text-orange-800';
-        default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -395,12 +389,11 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
          </div>
       </div>
 
-      {/* Main Scrollable Content */}
-      <div className="flex-grow overflow-y-auto bg-gray-50">
-        <div className="max-w-6xl mx-auto px-8 py-8">
+      {/* Main Scrollable Content - Changed to overflow-y-scroll to prevent horizontal shifting */}
+      <div className="flex-grow overflow-y-scroll stable-scrollbar bg-gray-50">
+        <div className="max-w-5xl mx-auto px-8 py-8 transition-all duration-300">
             {activeTab === 'managed' ? (
-                <div className="space-y-8">
-                    {/* Server Name Section */}
+                <div className="space-y-8 animate-fadeIn">
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                         <label htmlFor="server-name" className="block text-sm font-semibold text-gray-700 mb-2">
                             Server Name <span className="text-red-500">*</span>
@@ -417,7 +410,6 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start h-full">
-                        {/* Left Column: Tool Builder */}
                         <div className="lg:col-span-7 flex flex-col gap-6">
                             <h3 className="text-lg font-bold text-gray-900">Tool Builder</h3>
                             <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-6">
@@ -443,7 +435,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                                 
                                 <div className="border-t border-gray-100 pt-6 space-y-5">
                                     {newToolType === 'python' && (
-                                        <div>
+                                        <div className="animate-fadeIn">
                                             <label htmlFor="tool-code" className="block text-sm font-medium text-gray-700 mb-2">Python Function Code</label>
                                             <div className="relative">
                                                 <textarea
@@ -460,7 +452,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                                     )}
 
                                     {newToolType === 'rest-api' && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 animate-fadeIn">
                                             <div className="sm:col-span-1">
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">Method</label>
                                                 <select
@@ -485,7 +477,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                                     )}
 
                                     {newToolType !== 'python' && newToolType !== 'rest-api' && (
-                                        <div>
+                                        <div className="animate-fadeIn">
                                             <label htmlFor="index-name" className="block text-sm font-medium text-gray-700 mb-2">Index Name</label>
                                             <input 
                                                 id="index-name" 
@@ -540,13 +532,12 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                             </div>
                         </div>
 
-                        {/* Right Column: List of added tools */}
                         <div className="lg:col-span-5 flex flex-col h-full min-h-[500px]">
                             <h3 className="text-lg font-bold text-gray-900 mb-6">Configured Tools</h3>
                             <div className="bg-white rounded-xl border border-gray-200 flex-grow shadow-sm overflow-hidden p-4 space-y-4">
                                 {tools.length > 0 ? (
                                     tools.map((tool) => (
-                                      <div key={tool.id} className="group bg-white rounded-lg border border-gray-200 shadow-sm p-4 relative hover:border-green-200 transition-colors">
+                                      <div key={tool.id} className="group bg-white rounded-lg border border-gray-200 shadow-sm p-4 relative hover:border-green-200 transition-colors animate-fadeIn">
                                           <div className="flex items-center justify-between mb-2">
                                               <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${getTypeBadgeColor(tool.type)}`}>
                                                   {tool.type === 'rest-api' ? 'REST' : tool.type}
@@ -570,7 +561,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                     </div>
                 </div>
             ) : (
-                <div className="max-w-4xl mx-auto space-y-8">
+                <div className="space-y-8 animate-fadeIn">
                      <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm space-y-6">
                         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-100 pb-4">Remote Connection Details</h3>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -643,7 +634,7 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                                 </div>
 
                                 {remoteHeaders.length > 0 && (
-                                    <div className="mt-4 overflow-hidden border border-gray-200 rounded-lg bg-white">
+                                    <div className="mt-4 overflow-hidden border border-gray-200 rounded-lg bg-white animate-fadeIn">
                                         <table className="min-w-full divide-y divide-gray-200">
                                             <thead className="bg-gray-50">
                                                 <tr>
@@ -675,6 +666,60 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                             </div>
                          </div>
 
+                         {/* Advanced Settings Section */}
+                         <div className="pt-6 border-t border-gray-100">
+                            <button 
+                                type="button" 
+                                onClick={() => setShowAdvanced(!showAdvanced)}
+                                className="flex items-center text-sm font-bold text-gray-700 hover:text-green-600 transition-colors group"
+                            >
+                                <Icon name={showAdvanced ? 'pencil' : 'settings'} className="w-4 h-4 mr-2 group-hover:rotate-45 transition-transform" />
+                                {showAdvanced ? 'Hide OAuth2 Credentials' : 'Show Advanced Settings (OAuth2 Service Principal)'}
+                            </button>
+
+                            {showAdvanced && (
+                                <div className="mt-4 bg-gray-50 rounded-xl p-6 border border-gray-200 animate-fadeIn">
+                                    <div className="flex items-start space-x-3 mb-4">
+                                        <div className="bg-blue-100 p-1.5 rounded-md">
+                                            <Icon name="shield" className="w-4 h-4 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-gray-900">OAuth2 Client Credentials</h4>
+                                            <p className="text-xs text-gray-500 mt-0.5">Enter the service principal credentials to enable machine-to-machine authentication.</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label htmlFor="remote-client-id" className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                                                Client ID (Service Principal ID)
+                                            </label>
+                                            <input
+                                                id="remote-client-id"
+                                                type="text"
+                                                value={remoteClientId}
+                                                onChange={(e) => setRemoteClientId(e.target.value)}
+                                                className="w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition shadow-sm text-sm"
+                                                placeholder="e.g. 00000000-0000-0000-0000-000000000000"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="remote-client-secret" className="block text-xs font-semibold text-gray-500 uppercase mb-2">
+                                                Client Secret
+                                            </label>
+                                            <input
+                                                id="remote-client-secret"
+                                                type="password"
+                                                value={remoteClientSecret}
+                                                onChange={(e) => setRemoteClientSecret(e.target.value)}
+                                                className="w-full bg-white text-gray-900 rounded-lg px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition shadow-sm text-sm"
+                                                placeholder="••••••••••••••••"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                         </div>
+
                          <div className="pt-6 border-t border-gray-100">
                             <label className="block text-sm font-medium text-gray-700 mb-4">Transport Protocol</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -697,12 +742,12 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
       <div className="bg-white px-8 py-5 border-t border-gray-200 flex justify-between items-center z-10">
         <div className="text-sm text-gray-500">
             {activeTab === 'managed' && (
-              <span className="flex items-center gap-2"><Icon name="cpu-chip" className="w-4 h-4" /> SDK {CURRENT_SDK_VERSION}</span>
+              <span className="flex items-center gap-2 animate-fadeIn"><Icon name="cpu-chip" className="w-4 h-4" /> SDK {CURRENT_SDK_VERSION}</span>
             )}
         </div>
         <div className="flex space-x-3">
-            <button type="button" onClick={onCancel} className="bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2.5 px-6 rounded-lg border border-gray-300 shadow-sm transition-colors">Cancel</button>
-            <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-md transition-all">
+            <button type="button" onClick={onCancel} className="bg-white hover:bg-gray-100 text-gray-700 font-bold py-2.5 px-6 rounded-lg border border-gray-300 shadow-sm transition-colors">Cancel</button>
+            <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-md transition-all">
               {initialData ? 'Save Changes' : activeTab === 'managed' ? 'Create Managed Server' : 'Connect Remote Server'}
             </button>
         </div>

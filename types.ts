@@ -52,5 +52,7 @@ export interface ServerConfig {
   sdkVersion?: string;
   bearerToken?: string;
   headers?: Record<string, string>;
+  clientId?: string;
+  clientSecret?: string;
   type?: 'managed' | 'remote';
 }

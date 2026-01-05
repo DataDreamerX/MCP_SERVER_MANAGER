@@ -30,8 +30,9 @@ const formatReadableDate = (isoDate: string) => {
   });
 };
 
-const CopyableField: React.FC<{ label: string; value: string; codeStyle?: string; }> = ({ label, value, codeStyle = 'text-gray-700' }) => {
+const CopyableField: React.FC<{ label: string; value: string; codeStyle?: string; isPassword?: boolean; }> = ({ label, value, codeStyle = 'text-gray-700', isPassword = false }) => {
   const [copied, setCopied] = useState(false);
+  const [revealed, setRevealed] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(value);
@@ -43,16 +44,27 @@ const CopyableField: React.FC<{ label: string; value: string; codeStyle?: string
     <div>
       <label className="text-xs font-semibold text-gray-500 uppercase">{label}</label>
       <div className="mt-1 group relative bg-gray-100 p-3 rounded-md flex items-center justify-between border border-gray-200">
-        <code className={`text-sm break-words overflow-x-auto pr-8 font-mono ${codeStyle}`}>
-          {value}
+        <code className={`text-sm break-words overflow-x-auto pr-16 font-mono ${codeStyle}`}>
+          {isPassword && !revealed ? '••••••••••••••••' : value}
         </code>
-        <button
-          onClick={handleCopy}
-          className="absolute top-1/2 right-2 -translate-y-1/2 p-1.5 rounded-md text-gray-400 bg-gray-100 group-hover:bg-gray-200 group-hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-all"
-          aria-label={`Copy ${label}`}
-        >
-          {copied ? <Icon name="check" className="w-4 h-4 text-green-500" /> : <Icon name="copy" className="w-4 h-4" />}
-        </button>
+        <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
+          {isPassword && (
+             <button
+                onClick={() => setRevealed(!revealed)}
+                className="p-1.5 rounded-md text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-gray-600 transition-all"
+                aria-label={revealed ? "Hide value" : "Show value"}
+             >
+                <Icon name={revealed ? "pencil" : "settings"} className="w-4 h-4" />
+             </button>
+          )}
+          <button
+            onClick={handleCopy}
+            className="p-1.5 rounded-md text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-gray-600 transition-all"
+            aria-label={`Copy ${label}`}
+          >
+            {copied ? <Icon name="check" className="w-4 h-4 text-green-500" /> : <Icon name="copy" className="w-4 h-4" />}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -61,7 +73,7 @@ const CopyableField: React.FC<{ label: string; value: string; codeStyle?: string
 export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onReturnToList, onToggleStatus, onToggleVisibility, onDelete, onEdit }) => {
   if (!server) return null;
 
-  const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools, maxAgents, visibilityStatus, sdkVersion, headers } = server;
+  const { name, status, command, endpoint, transport, createdBy, lastModified, isPublic, tools, maxAgents, visibilityStatus, sdkVersion, headers, clientId, clientSecret } = server;
   const style = statusStyles[status];
   const hasTools = tools && tools.length > 0;
   const isTransitioning = status === ServerStatus.STARTING || status === ServerStatus.STOPPING;
@@ -158,6 +170,23 @@ export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onRe
               <CopyableField label="Endpoint" value={endpoint} codeStyle="text-blue-700" />
               <CopyableField label="Command" value={command} codeStyle="text-green-700" />
               
+              {(clientId || clientSecret) && (
+                <div className="mt-6 border-t border-gray-100 pt-4">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center">
+                    <Icon name="shield" className="w-4 h-4 mr-2 text-blue-500" />
+                    OAuth2 Service Principal
+                  </h3>
+                  <div className="space-y-4">
+                    {clientId && (
+                      <CopyableField label="Client ID (SPID)" value={clientId} codeStyle="text-indigo-700" />
+                    )}
+                    {clientSecret && (
+                      <CopyableField label="Client Secret" value={clientSecret} codeStyle="text-indigo-700" isPassword={true} />
+                    )}
+                  </div>
+                </div>
+              )}
+
               {headers && Object.keys(headers).length > 0 && (
                 <div className="mt-4">
                   <label className="text-xs font-semibold text-gray-500 uppercase">Custom Headers</label>
