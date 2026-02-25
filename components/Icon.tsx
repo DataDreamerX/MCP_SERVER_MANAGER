@@ -25,7 +25,7 @@ export const Icon: React.FC<IconProps> = ({ name, className = 'w-6 h-6' }) => {
     loader: <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 11.667 0l3.181-3.183m-4.991-2.691v4.992m0 0h4.992m-4.993 0-3.181-3.183a8.25 8.25 0 0 1 11.667 0l3.181 3.183" />,
     spinner: <path d="M21 12a9 9 0 1 1-6.219-8.56" />,
     search: <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />,
-    broadcast: <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6.75 6.75 0 0 0 6.75-6.75a6.75 6.75 0 0 0-6.75-6.75a6.75 6.75 0 0 0-6.75 6.75a6.75 6.75 0 0 0 6.75 6.75Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 5.25v0m0 13.5v0m-6.75-6.75h.01M18.75 12h.01" />,
+    broadcast: <><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6.75 6.75 0 0 0 6.75-6.75a6.75 6.75 0 0 0-6.75-6.75a6.75 6.75 0 0 0-6.75 6.75a6.75 6.75 0 0 0 6.75 6.75Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 5.25v0m0 13.5v0m-6.75-6.75h.01M18.75 12h.01" /></>,
     code: <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25" />,
     copy: <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 0 0-2.25-2.25H6A2.25 2.25 0 0 0 3.75 6v8.25A2.25 2.25 0 0 0 6 16.5h2.25m8.25-8.25H18a2.25 2.25 0 0 1 2.25 2.25v8.25A2.25 2.25 0 0 1 18 21H9.75A2.25 2.25 0 0 1 7.5 18.75V16.5m8.25-8.25h-8.25" />,
     check: <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />,

@@ -227,6 +227,34 @@ export const ServerDetailPage: React.FC<ServerDetailPageProps> = ({ server, onRe
           </div>
         </section>
 
+        {server.cacheConfig && (
+          <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 animate-fadeIn">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                <Icon name="settings" className="w-5 h-5 mr-2 text-gray-500" />
+                Cache Configuration
+              </h2>
+              <span className={`text-xs font-bold px-2 py-1 rounded-full ${server.cacheConfig.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
+                {server.cacheConfig.enabled ? 'Enabled' : 'Disabled'}
+              </span>
+            </div>
+            <div className={`grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm transition-opacity ${server.cacheConfig.enabled ? 'opacity-100' : 'opacity-50'}`}>
+              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">TTL</p>
+                  <p className="text-gray-800 font-semibold text-lg mt-1">{server.cacheConfig.ttl}s</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Size</p>
+                  <p className="text-gray-800 font-semibold text-lg mt-1">{server.cacheConfig.size} MB</p>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Location</p>
+                  <p className="text-gray-800 font-semibold text-lg mt-1 capitalize">{server.cacheConfig.location}</p>
+              </div>
+            </div>
+          </section>
+        )}
+
         <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
               <Icon name="wrench-screwdriver" className="w-5 h-5 mr-2 text-gray-500" />

@@ -34,6 +34,13 @@ export interface Tool {
   args: ToolArg[];
 }
 
+export interface CacheConfig {
+  enabled: boolean;
+  ttl: number; // in seconds
+  size: number; // in MB
+  location: 'memory' | 'disk' | 'redis';
+}
+
 export interface ServerConfig {
   id: string;
   name: string;
@@ -55,4 +62,5 @@ export interface ServerConfig {
   clientId?: string;
   clientSecret?: string;
   type?: 'managed' | 'remote';
+  cacheConfig?: CacheConfig;
 }

@@ -45,6 +45,12 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
   const [name, setName] = useState('');
   const [tools, setTools] = useState<FormTool[]>([]);
   
+  // Cache Configuration State
+  const [cacheEnabled, setCacheEnabled] = useState(true);
+  const [cacheTtl, setCacheTtl] = useState(3600);
+  const [cacheSize, setCacheSize] = useState(512);
+  const [cacheLocation, setCacheLocation] = useState<'memory' | 'disk' | 'redis'>('memory');
+
   // New Tool State
   const [newToolName, setNewToolName] = useState('');
   const [newToolType, setNewToolType] = useState<ToolTypeOption>('azure');
@@ -145,6 +151,18 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
 
         setTools(parsedTools);
         setToolIdCounter(parsedTools.length);
+
+        if (initialData.cacheConfig) {
+          setCacheEnabled(initialData.cacheConfig.enabled);
+          setCacheTtl(initialData.cacheConfig.ttl);
+          setCacheSize(initialData.cacheConfig.size);
+          setCacheLocation(initialData.cacheConfig.location);
+        } else {
+          setCacheEnabled(true);
+          setCacheTtl(3600);
+          setCacheSize(512);
+          setCacheLocation('memory');
+        }
       }
     } else {
       setActiveTab('managed');
@@ -159,6 +177,10 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
       setRemoteClientId('');
       setRemoteClientSecret('');
       setShowAdvanced(false);
+      setCacheEnabled(true);
+      setCacheTtl(3600);
+      setCacheSize(512);
+      setCacheLocation('memory');
     }
   }, [initialData]);
 
@@ -302,6 +324,12 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
             sourceFiles: initialData?.sourceFiles || [],
             isPublic: initialData?.isPublic || false,
             sdkVersion: CURRENT_SDK_VERSION,
+            cacheConfig: {
+                enabled: cacheEnabled,
+                ttl: cacheTtl,
+                size: cacheSize,
+                location: cacheLocation
+            }
         };
         onSave(serverData);
     } else {
@@ -407,6 +435,143 @@ export const ServerForm: React.FC<ServerFormProps> = ({ initialData, onSave, onC
                             placeholder="e.g., Enterprise Knowledge Graph"
                             required
                         />
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center space-x-3">
+                                <div className="bg-green-100 p-2 rounded-lg">
+                                    <Icon name="settings" className="w-5 h-5 text-green-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-gray-900">MCP Cache Configuration</h3>
+                                    <p className="text-xs text-gray-500">Optimize performance by caching frequent requests.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-3 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${cacheEnabled ? 'text-green-600' : 'text-gray-400'}`}>
+                                    {cacheEnabled ? 'Enabled' : 'Disabled'}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setCacheEnabled(!cacheEnabled)}
+                                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${cacheEnabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                                >
+                                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${cacheEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className={`space-y-8 transition-all duration-300 ${cacheEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'}`}>
+                            {/* TTL and Size Row */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <label htmlFor="cache-ttl" className="text-sm font-bold text-gray-700 flex items-center">
+                                            <Icon name="clock" className="w-4 h-4 mr-2 text-gray-400" />
+                                            Expiration (TTL)
+                                        </label>
+                                        <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{cacheTtl}s</span>
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <input
+                                            id="cache-ttl"
+                                            type="number"
+                                            value={cacheTtl}
+                                            onChange={(e) => setCacheTtl(parseInt(e.target.value) || 0)}
+                                            className="flex-grow bg-white text-gray-900 rounded-lg px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition text-sm"
+                                            min="0"
+                                            disabled={!cacheEnabled}
+                                        />
+                                        <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200">
+                                            {[
+                                                { label: '5m', val: 300 },
+                                                { label: '1h', val: 3600 },
+                                                { label: '24h', val: 86400 }
+                                            ].map(preset => (
+                                                <button
+                                                    key={preset.label}
+                                                    type="button"
+                                                    onClick={() => setCacheTtl(preset.val)}
+                                                    className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${cacheTtl === preset.val ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                                >
+                                                    {preset.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <label htmlFor="cache-size" className="text-sm font-bold text-gray-700 flex items-center">
+                                            <Icon name="folder" className="w-4 h-4 mr-2 text-gray-400" />
+                                            Storage Limit
+                                        </label>
+                                        <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{cacheSize}MB</span>
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <input
+                                            id="cache-size"
+                                            type="number"
+                                            value={cacheSize}
+                                            onChange={(e) => setCacheSize(parseInt(e.target.value) || 0)}
+                                            className="flex-grow bg-white text-gray-900 rounded-lg px-4 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 transition text-sm"
+                                            min="1"
+                                            disabled={!cacheEnabled}
+                                        />
+                                        <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200">
+                                            {[
+                                                { label: '128M', val: 128 },
+                                                { label: '512M', val: 512 },
+                                                { label: '1G', val: 1024 }
+                                            ].map(preset => (
+                                                <button
+                                                    key={preset.label}
+                                                    type="button"
+                                                    onClick={() => setCacheSize(preset.val)}
+                                                    className={`px-2 py-1 text-[10px] font-bold rounded transition-colors ${cacheSize === preset.val ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                                >
+                                                    {preset.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Location Cards */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-bold text-gray-700 flex items-center">
+                                    <Icon name="cpu-chip" className="w-4 h-4 mr-2 text-gray-400" />
+                                    Storage Location
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    {[
+                                        { id: 'memory', label: 'In-Memory', desc: 'Fastest, volatile storage.', icon: 'sparkles' },
+                                        { id: 'disk', label: 'Local Disk', desc: 'Persistent, slower.', icon: 'folder' },
+                                        { id: 'redis', label: 'Redis', desc: 'Distributed, scalable.', icon: 'global' }
+                                    ].map(loc => (
+                                        <button
+                                            key={loc.id}
+                                            type="button"
+                                            onClick={() => setCacheLocation(loc.id as any)}
+                                            className={`flex flex-col items-start p-4 rounded-xl border-2 transition-all text-left group ${
+                                                cacheLocation === loc.id 
+                                                ? 'border-green-500 bg-green-50/50 ring-1 ring-green-500' 
+                                                : 'border-gray-200 hover:border-gray-300 bg-white'
+                                            }`}
+                                        >
+                                            <div className={`p-2 rounded-lg mb-3 transition-colors ${cacheLocation === loc.id ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400 group-hover:text-gray-600'}`}>
+                                                <Icon name={loc.icon} className="w-5 h-5" />
+                                            </div>
+                                            <span className={`text-sm font-bold ${cacheLocation === loc.id ? 'text-green-900' : 'text-gray-900'}`}>{loc.label}</span>
+                                            <span className="text-xs text-gray-500 mt-1">{loc.desc}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start h-full">
